@@ -1,0 +1,13 @@
+# AgentVigilante marketing site (Vite + React in web/)
+# Console API stays local — this deploy is landing + static UI only.
+
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback for React Router (/console, etc.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
