@@ -36,8 +36,8 @@ def ensure_repo(workdir: Path) -> None:
         if init.returncode != 0:
             raise CheckpointError(init.stderr.strip() or "git init failed")
     for key, value in (
-        ("user.email", "agentjail@local"),
-        ("user.name", "AgentJail"),
+        ("user.email", "agentvigilante@local"),
+        ("user.name", "AgentVigilante"),
     ):
         cfg = _git(workdir, "config", key, value)
         if cfg.returncode != 0:
@@ -67,7 +67,7 @@ def create_checkpoint(workdir: Path, job_id: str) -> str | None:
             "commit-tree",
             tree_sha,
             "-m",
-            f"agentjail checkpoint {job_id}",
+            f"agentvigilante checkpoint {job_id}",
         )
         if commit.returncode != 0:
             raise CheckpointError(commit.stderr.strip() or "git commit-tree failed")
@@ -76,7 +76,7 @@ def create_checkpoint(workdir: Path, job_id: str) -> str | None:
             raise CheckpointError("empty commit sha from commit-tree")
 
         safe_ref = "".join(c if c.isalnum() or c in "-_" else "-" for c in job_id)
-        ref = _git(workdir, "update-ref", f"refs/agentjail/{safe_ref}", sha)
+        ref = _git(workdir, "update-ref", f"refs/agentvigilante/{safe_ref}", sha)
         if ref.returncode != 0:
             logger.warning("Failed to update checkpoint ref: %s", ref.stderr.strip())
 

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 if TYPE_CHECKING:
-    from agent_jail.core.proxy import Job
+    from agent_vigilante.core.proxy import Job
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +72,14 @@ def _applescript_escape(text: str) -> str:
 
 def _macos_dialog(command: str, risk_reason: str | None, job_id: str) -> str:
     body = _applescript_escape(
-        "AgentJail Security Guard\n\n"
+        "AgentVigilante Security Guard\n\n"
         "RISKY command pending approval:\n"
         f"{_truncate(command)}\n\n"
         f"Reason: {_truncate(risk_reason or 'review required', 120)}\n"
         f"Job: {job_id[:8]}"
     )
     script = (
-        f'display dialog "{body}" with title "AgentJail" '
+        f'display dialog "{body}" with title "AgentVigilante" '
         f'buttons {{"Deny", "Open Console", "Approve"}} '
         f'default button "Approve" cancel button "Deny" '
         f'with icon caution'
@@ -123,7 +123,7 @@ def _linux_dialog(command: str, risk_reason: str | None, job_id: str) -> str:
             [
                 "zenity",
                 "--question",
-                "--title=AgentJail",
+                "--title=AgentVigilante",
                 f"--text={text}",
                 "--ok-label=Approve",
                 "--cancel-label=Deny",
@@ -155,7 +155,7 @@ def _linux_dialog(command: str, risk_reason: str | None, job_id: str) -> str:
                 "--no-label",
                 "Deny",
                 "--title",
-                "AgentJail",
+                "AgentVigilante",
             ],
             capture_output=True,
             text=True,
@@ -174,7 +174,7 @@ def _linux_dialog(command: str, risk_reason: str | None, job_id: str) -> str:
         subprocess.run(
             [
                 "notify-send",
-                "AgentJail",
+                "AgentVigilante",
                 f"RISKY pending: {_truncate(command, 80)} — open console to approve",
             ],
             check=False,
@@ -245,7 +245,7 @@ async def _notify_and_act(job: Job) -> None:
                 resp = await client.post(
                     f"{notify_base_url}/v1/commands/{job_id}/deny",
                     json={
-                        "reason": "Denied via native AgentJail dialog",
+                        "reason": "Denied via native AgentVigilante dialog",
                         "revert": False,
                     },
                 )

@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 SKIP_DIR_NAMES = {
     ".git",
-    ".agentjail",
-    ".agentjail_shadow",
+    ".agentvigilante",
+    ".agentvigilante_shadow",
     "__pycache__",
     ".venv",
     "venv",

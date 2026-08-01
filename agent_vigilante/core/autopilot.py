@@ -6,7 +6,7 @@ import re
 import shlex
 from typing import Iterable
 
-from agent_jail.core.command_analyzer import RiskLevel
+from agent_vigilante.core.command_analyzer import RiskLevel
 
 # Sensitive fragments that always stay HITL even under autopilot
 SENSITIVE_FRAGMENTS = (

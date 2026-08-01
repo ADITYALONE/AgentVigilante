@@ -1,4 +1,4 @@
-"""Tests for ~/.agentjail/config.json helpers."""
+"""Tests for ~/.agentvigilante/config.json helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_jail.config import (
+from agent_vigilante.config import (
     apply_invisible_defaults,
     apply_interactive_defaults,
     load_config,

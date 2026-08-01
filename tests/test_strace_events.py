@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from agent_jail.core.strace_profile import counts_from_events, parse_strace_events
+from agent_vigilante.core.strace_profile import counts_from_events, parse_strace_events
 
 SAMPLE = """
 1234 12:00:00.000001 openat(AT_FDCWD, "/workspace/foo.py", O_RDONLY) = 3

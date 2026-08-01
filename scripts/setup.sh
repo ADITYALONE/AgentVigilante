@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Build the AgentJail sandbox image (with strace) and verify Docker is available.
+# Build the AgentVigilante sandbox image (with strace) and verify Docker is available.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE_TAG="${IMAGE_TAG:-agentjail-sandbox:local}"
+IMAGE_TAG="${IMAGE_TAG:-agentvigilante-sandbox:local}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "error: docker CLI not found. Install Docker Desktop or the Docker Engine first." >&2

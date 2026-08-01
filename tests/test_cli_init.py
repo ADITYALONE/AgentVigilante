@@ -1,4 +1,4 @@
-"""Tests for agentjail init MCP config patching."""
+"""Tests for agentvigilante init MCP config patching."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agent_jail.cli import cmd_init, patch_json_config
+from agent_vigilante.cli import cmd_init, patch_json_config
 
 
 class PatchJsonConfigTests(unittest.TestCase):
@@ -32,10 +32,10 @@ class PatchJsonConfigTests(unittest.TestCase):
             self.assertTrue(ok, msg)
             data = json.loads(path.read_text(encoding="utf-8"))
             self.assertIn("other", data["mcpServers"])
-            self.assertIn("agentjail", data["mcpServers"])
+            self.assertIn("agentvigilante", data["mcpServers"])
             self.assertEqual(
-                data["mcpServers"]["agentjail"]["args"],
-                ["-m", "agent_jail.mcp_server"],
+                data["mcpServers"]["agentvigilante"]["args"],
+                ["-m", "agent_vigilante.mcp_server"],
             )
             backups = list(Path(tmp).glob("mcp.json.bak.*"))
             self.assertEqual(len(backups), 1)
@@ -56,15 +56,15 @@ class PatchJsonConfigTests(unittest.TestCase):
             ok, msg = patch_json_config(path)
             self.assertTrue(ok, msg)
             data = json.loads(path.read_text(encoding="utf-8"))
-            self.assertIn("agentjail", data["mcpServers"])
+            self.assertIn("agentvigilante", data["mcpServers"])
 
 
 class CmdInitTests(unittest.TestCase):
     def test_force_project_writes_cwd_cursor_mcp(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             cwd = Path(tmp)
-            with mock.patch("agent_jail.cli.discover_config_paths", return_value={}):
-                with mock.patch("agent_jail.cli.Path.cwd", return_value=cwd):
+            with mock.patch("agent_vigilante.cli.discover_config_paths", return_value={}):
+                with mock.patch("agent_vigilante.cli.Path.cwd", return_value=cwd):
                     ns = mock.Mock(
                         url="http://127.0.0.1:8420",
                         project=False,
@@ -76,7 +76,7 @@ class CmdInitTests(unittest.TestCase):
             project_mcp = cwd / ".cursor" / "mcp.json"
             self.assertTrue(project_mcp.is_file())
             data = json.loads(project_mcp.read_text(encoding="utf-8"))
-            self.assertIn("agentjail", data["mcpServers"])
+            self.assertIn("agentvigilante", data["mcpServers"])
 
 
 if __name__ == "__main__":

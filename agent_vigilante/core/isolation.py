@@ -14,11 +14,11 @@ from docker.errors import APIError, ContainerError, ImageNotFound, NotFound
 from docker.models.containers import Container
 from docker.types import Ulimit
 
-from agent_jail.core.egress_proxy import DEFAULT_WHITELIST
+from agent_vigilante.core.egress_proxy import DEFAULT_WHITELIST
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_BASE_IMAGE = "agentjail-sandbox:local"
+DEFAULT_BASE_IMAGE = "agentvigilante-sandbox:local"
 
 
 class CommandResult(TypedDict):
@@ -33,7 +33,7 @@ class AgentSandbox:
     """Ephemeral Docker sandbox with resource limits and egress proxy routing.
 
     Containers may reach the network only through HTTP(S)_PROXY pointing at
-    AgentJail's whitelist CONNECT proxy on the Docker host. Recursive DNS is
+    AgentVigilante's whitelist CONNECT proxy on the Docker host. Recursive DNS is
     blackholed; whitelist package hosts are pinned via ``extra_hosts``.
     """
 
@@ -110,9 +110,9 @@ class AgentSandbox:
         if not self.enable_strace or not job_id:
             return command
         token = self._safe_job_token(job_id)
-        trace = f"/workspace/.agentjail/strace/{token}.trace"
+        trace = f"/workspace/.agentvigilante/strace/{token}.trace"
         return (
-            f"mkdir -p /workspace/.agentjail/strace && "
+            f"mkdir -p /workspace/.agentvigilante/strace && "
             f"strace -f -tt "
             f"-e trace=openat,open,connect,socket,clone,clone3,execve,"
             f"unlink,unlinkat,rename,renameat,write "

@@ -1,4 +1,4 @@
-"""AgentJail MCP stdio server — route agent tool calls through the jail API."""
+"""AgentVigilante MCP stdio server — route agent tool calls through the containment API."""
 
 from __future__ import annotations
 
@@ -15,14 +15,14 @@ DEFAULT_BASE_URL = "http://127.0.0.1:8420"
 TERMINAL_STATUSES = {"completed", "failed", "denied", "blocked", "killed"}
 
 mcp = MCPServer(
-    name="agentjail",
+    name="agentvigilante",
     version="0.3.0",
-    description="Holographic sandbox + kernel telemetry via AgentJail",
+    description="Holographic sandbox + kernel telemetry via AgentVigilante",
 )
 
 
 def _base_url() -> str:
-    return os.environ.get("AGENTJAIL_URL", DEFAULT_BASE_URL).rstrip("/")
+    return os.environ.get("AGENTVIGILANTE_URL", DEFAULT_BASE_URL).rstrip("/")
 
 
 async def _consume_override(client: httpx.AsyncClient) -> str | None:
@@ -95,8 +95,8 @@ async def _poll_job(
 
 
 @mcp.tool()
-async def agentjail_exec(command: str, timeout: int = 10) -> str:
-    """Execute a shell command through AgentJail's holographic sandbox pipeline.
+async def agentvigilante_exec(command: str, timeout: int = 10) -> str:
+    """Execute a shell command through AgentVigilante's holographic sandbox pipeline.
 
     SAFE commands auto-run in a COW shadow workspace. RISKY commands wait for
     dashboard approval. CRITICAL commands are blocked. Requires `python run.py`.
@@ -111,7 +111,7 @@ async def agentjail_exec(command: str, timeout: int = 10) -> str:
             create.raise_for_status()
         except httpx.ConnectError:
             return (
-                "ERROR: Cannot connect to AgentJail at "
+                "ERROR: Cannot connect to AgentVigilante at "
                 f"{_base_url()}. Start it with `python run.py` first."
             )
         job = create.json()
@@ -124,15 +124,15 @@ async def agentjail_exec(command: str, timeout: int = 10) -> str:
 
 
 @mcp.tool()
-async def agentjail_job_status(job_id: str) -> str:
-    """Look up an AgentJail job by id."""
+async def agentvigilante_job_status(job_id: str) -> str:
+    """Look up an AgentVigilante job by id."""
     async with httpx.AsyncClient(timeout=15.0) as client:
         override = await _consume_override(client)
         try:
             resp = await client.get(f"{_base_url()}/v1/commands/{job_id}")
         except httpx.ConnectError:
             return (
-                "ERROR: Cannot connect to AgentJail at "
+                "ERROR: Cannot connect to AgentVigilante at "
                 f"{_base_url()}. Start it with `python run.py` first."
             )
         if resp.status_code == 404:
@@ -143,7 +143,7 @@ async def agentjail_job_status(job_id: str) -> str:
 
 
 @mcp.tool()
-async def agentjail_revert(job_id: str, reason: str = "") -> str:
+async def agentvigilante_revert(job_id: str, reason: str = "") -> str:
     """Wipe the job hologram and inject a SYSTEM OVERRIDE into subsequent tool results.
 
     Use after a bad agent turn so filesystem state and LLM memory stay aligned.
@@ -156,7 +156,7 @@ async def agentjail_revert(job_id: str, reason: str = "") -> str:
             )
         except httpx.ConnectError:
             return (
-                "ERROR: Cannot connect to AgentJail at "
+                "ERROR: Cannot connect to AgentVigilante at "
                 f"{_base_url()}. Start it with `python run.py` first."
             )
         if resp.status_code == 404:

@@ -11,11 +11,11 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from agent_jail.core import proxy as proxy_module
-from agent_jail.core.diff_engine import DiffEngine
-from agent_jail.core.egress_proxy import WhitelistProxy
-from agent_jail.core.isolation import AgentSandbox, DEFAULT_BASE_IMAGE
-from agent_jail.core.proxy import router as proxy_router
+from agent_vigilante.core import proxy as proxy_module
+from agent_vigilante.core.diff_engine import DiffEngine
+from agent_vigilante.core.egress_proxy import WhitelistProxy
+from agent_vigilante.core.isolation import AgentSandbox, DEFAULT_BASE_IMAGE
+from agent_vigilante.core.proxy import router as proxy_router
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def create_app(
     autopilot: bool = False,
     mode: str = "interactive",
 ) -> FastAPI:
-    """Build the AgentJail ASGI app with sandbox, egress proxy, and dashboard."""
+    """Build the AgentVigilante ASGI app with sandbox, egress proxy, and dashboard."""
     workdir_path = Path(workdir).resolve()
     workdir_path.mkdir(parents=True, exist_ok=True)
 
@@ -51,7 +51,7 @@ def create_app(
         mode=mode,
     )
 
-    from agent_jail.notify import configure_notify
+    from agent_vigilante.notify import configure_notify
 
     configure_notify(base_url=notify_url, enabled=native_notify)
 
@@ -67,7 +67,7 @@ def create_app(
             await egress.stop()
 
     app = FastAPI(
-        title="AgentJail",
+        title="AgentVigilante",
         description="Local human-in-the-loop sandboxing proxy for AI agents",
         version="0.3.0",
         lifespan=lifespan,
@@ -110,7 +110,7 @@ def create_app(
             return templates.TemplateResponse(
                 request,
                 "index.html",
-                {"title": "AgentJail"},
+                {"title": "AgentVigilante"},
             )
 
         logger.warning(
@@ -119,7 +119,7 @@ def create_app(
         )
 
     logger.info(
-        "AgentJail app created workdir=%s image=%s proxy_port=%s",
+        "AgentVigilante app created workdir=%s image=%s proxy_port=%s",
         workdir_path,
         base_image,
         proxy_port,

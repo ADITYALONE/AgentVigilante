@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from agent_jail.core.autopilot import autopilot_allows, touches_sensitive
-from agent_jail.core.command_analyzer import RiskLevel
+from agent_vigilante.core.autopilot import autopilot_allows, touches_sensitive
+from agent_vigilante.core.command_analyzer import RiskLevel
 
 
 class AutopilotTests(unittest.TestCase):

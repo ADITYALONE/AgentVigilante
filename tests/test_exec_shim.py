@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from agent_jail.exec_shim import (
+from agent_vigilante.exec_shim import (
     extract_shell_c_command,
     is_interactive_shell,
     reconstruct_command,
@@ -51,7 +51,7 @@ class ReconstructTests(unittest.TestCase):
 
 class RunViaDaemonTests(unittest.TestCase):
     def test_connect_error_returns_tempfail(self) -> None:
-        with mock.patch("agent_jail.exec_shim.httpx.Client") as client_cls:
+        with mock.patch("agent_vigilante.exec_shim.httpx.Client") as client_cls:
             client = client_cls.return_value.__enter__.return_value
             import httpx
 

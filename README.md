@@ -1,10 +1,10 @@
 <div align="center">
 
-# AgentJail
+# AgentVigilante
 
 **A containment runtime for AI coding agents.**
 
-Your agent proposes. AgentJail inspects, sandboxes, and asks — before anything touches your machine.
+Your agent proposes. AgentVigilante inspects, sandboxes, and asks — before anything touches your machine.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-black.svg)](pyproject.toml)
@@ -29,11 +29,11 @@ Coding agents run shell commands. Most of the time that is `pytest` and `npm ins
 
 You find out afterward.
 
-## What AgentJail does
+## What AgentVigilante does
 
 Every command is classified before it executes, runs against a copy-on-write clone of your workspace inside an ephemeral container, and only reaches your real files when you say so.
 
-| | Without AgentJail | With AgentJail |
+| | Without AgentVigilante | With AgentVigilante |
 |---|---|---|
 | `pytest` | Runs on your machine | Runs in a disposable sandbox |
 | `npm install left-pad` | Installs, unbounded network | Sandboxed, whitelist egress only |
@@ -52,9 +52,9 @@ git clone https://github.com/ADITYALONE/AgentVigilante.git && cd AgentVigilante
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
 
-agentjail setup     # build the sandbox image (once)
-agentjail init      # wire up Cursor / Claude / Windsurf MCP
-agentjail start     # console → http://127.0.0.1:8420
+agentvigilante setup     # build the sandbox image (once)
+agentvigilante init      # wire up Cursor / Claude / Windsurf MCP
+agentvigilante start     # console → http://127.0.0.1:8420
 ```
 
 Restart your IDE after `init` so the MCP server loads.
@@ -102,11 +102,11 @@ flowchart TD
 
 ---
 
-## Three ways to route agents through the jail
+## Three ways to route agents through AgentVigilante
 
-| | MCP gateway | `agentjail wrap` | Invisible mode |
+| | MCP gateway | `agentvigilante wrap` | Invisible mode |
 |---|---|---|---|
-| Setup | `agentjail init` | `agentjail wrap cursor .` | `agentjail invisible enable` |
+| Setup | `agentvigilante init` | `agentvigilante wrap cursor .` | `agentvigilante invisible enable` |
 | Intercepts | Tool calls the model chooses | PATH lookups for `bash`, `npm`, `python`, … | Same, globally, every terminal |
 | Built-in IDE Shell | No | Yes | Yes |
 | Runs in background | No | No | launchd / systemd |
@@ -115,11 +115,11 @@ flowchart TD
 ### MCP gateway
 
 ```bash
-agentjail init              # patches Claude / Cursor / Windsurf
-agentjail init --project    # also ./.cursor/mcp.json
+agentvigilante init              # patches Claude / Cursor / Windsurf
+agentvigilante init --project    # also ./.cursor/mcp.json
 ```
 
-Tools exposed: `agentjail_exec`, `agentjail_job_status`, `agentjail_revert`.
+Tools exposed: `agentvigilante_exec`, `agentvigilante_job_status`, `agentvigilante_revert`.
 
 <details>
 <summary>Manual MCP config</summary>
@@ -127,10 +127,10 @@ Tools exposed: `agentjail_exec`, `agentjail_job_status`, `agentjail_revert`.
 ```json
 {
   "mcpServers": {
-    "agentjail": {
+    "agentvigilante": {
       "command": "python",
-      "args": ["-m", "agent_jail.mcp_server"],
-      "env": { "AGENTJAIL_URL": "http://127.0.0.1:8420" }
+      "args": ["-m", "agent_vigilante.mcp_server"],
+      "env": { "AGENTVIGILANTE_URL": "http://127.0.0.1:8420" }
     }
   }
 }
@@ -138,17 +138,17 @@ Tools exposed: `agentjail_exec`, `agentjail_job_status`, `agentjail_revert`.
 
 </details>
 
-### PATH shims (`agentjail wrap`)
+### PATH shims (`agentvigilante wrap`)
 
-MCP is a *soft* boundary — the model can still reach for a built-in Shell tool. Wrapping is harder: shims in `~/.agentjail/shims` intercept the binary lookup itself.
+MCP is a *soft* boundary — the model can still reach for a built-in Shell tool. Wrapping is harder: shims in `~/.agentvigilante/shims` intercept the binary lookup itself.
 
 ```bash
-agentjail shim-install
-agentjail wrap claude       # CLI agents
-agentjail wrap cursor .     # launches Cursor with shimmed PATH (macOS)
+agentvigilante shim-install
+agentvigilante wrap claude       # CLI agents
+agentvigilante wrap cursor .     # launches Cursor with shimmed PATH (macOS)
 ```
 
-`wrap` prepends the shim directory to `PATH`, points `SHELL` at the shimmed shell, and launches GUI apps by their binary so the environment survives. Set `AGENTJAIL_BYPASS=1` for deliberate host passthrough.
+`wrap` prepends the shim directory to `PATH`, points `SHELL` at the shimmed shell, and launches GUI apps by their binary so the environment survives. Set `AGENTVIGILANTE_BYPASS=1` for deliberate host passthrough.
 
 > **Residual risk:** an absolute invocation such as `/bin/zsh -c ...` skips PATH entirely and is not intercepted.
 
@@ -159,14 +159,14 @@ agentjail wrap cursor .     # launches Cursor with shimmed PATH (macOS)
 Interactive is the default. Invisible mode is for when you want the guard running without the ceremony.
 
 ```bash
-agentjail invisible enable     # background service + shell PATH + autopilot
-agentjail invisible status
-agentjail invisible disable    # back to interactive
+agentvigilante invisible enable     # background service + shell PATH + autopilot
+agentvigilante invisible status
+agentvigilante invisible disable    # back to interactive
 ```
 
 | | Interactive (default) | Invisible |
 |---|---|---|
-| Daemon | `agentjail start` | launchd / systemd |
+| Daemon | `agentvigilante start` | launchd / systemd |
 | PATH | opt-in via `wrap` | injected into `.zshrc` / `.bashrc` |
 | `npm install`, `pytest` | waits for approval | silent autopilot in the hologram |
 | `.env` / `.ssh` writes | waits | waits, prompts in your IDE |
@@ -178,12 +178,12 @@ agentjail invisible disable    # back to interactive
 Service control on its own:
 
 ```bash
-agentjail service install | uninstall | status | start | stop
+agentvigilante service install | uninstall | status | start | stop
 ```
 
 ### IDE extension
 
-[`extensions/vscode/`](extensions/vscode/) adds a status bar item — `AgentJail: Active (0 pending)` — with one-click **Approve** / **Block** when something needs you. Install instructions live in that folder.
+[`extensions/vscode/`](extensions/vscode/) adds a status bar item — `AgentVigilante: Active (0 pending)` — with one-click **Approve** / **Block** when something needs you. Install instructions live in that folder.
 
 ---
 
@@ -205,7 +205,7 @@ agentjail service install | uninstall | status | start | stop
 4. **Whitelist CONNECT egress** — allowed hosts only, no TLS interception
 5. **DNS blackhole** — `dns=127.0.0.1` inside the container; registry hosts pinned via `extra_hosts`
 6. **Symlink guard** — SAFE commands touching workspace symlinks escalate to review and are rechecked at approve time
-7. **Git Time Machine** — checkpoints under `refs/agentjail/*` inside the hologram
+7. **Git Time Machine** — checkpoints under `refs/agentvigilante/*` inside the hologram
 8. **Memory revert** — wiping the shadow also injects a one-shot `SYSTEM OVERRIDE` so the model stops believing its change landed
 
 ### Egress whitelist
@@ -248,7 +248,7 @@ npm run dev        # optional live reload on :5173
 | `--host` | `127.0.0.1` |
 | `--port` | `8420` |
 | `--workdir` | `./workspace` |
-| `--base-image` | `agentjail-sandbox:local` |
+| `--base-image` | `agentvigilante-sandbox:local` |
 | `--proxy-port` | `8888` |
 | `--no-native-notify` | off |
 
@@ -296,9 +296,9 @@ cd AgentVigilante
 
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
-agentjail setup
+agentvigilante setup
 cd web && npm install && npm run build && cd ..
-agentjail start
+agentvigilante start
 ```
 
 Run the suite (offline, no Docker required):
@@ -311,9 +311,9 @@ python -m unittest discover -s tests -v
 <summary>Project layout</summary>
 
 ```text
-agent_jail/
+agent_vigilante/
 ├── cli.py                # init / setup / start / wrap / invisible / service
-├── config.py             # ~/.agentjail/config.json
+├── config.py             # ~/.agentvigilante/config.json
 ├── shim.py               # PATH shim generation
 ├── exec_shim.py          # shim → daemon client
 ├── wrap.py               # environment composition and app launch
@@ -347,11 +347,11 @@ tests/
 | Channel | Command | Status |
 |---------|---------|--------|
 | Source | `pip install -e .` | available |
-| PyPI | `pip install agentjail` | pending publish |
-| npx wrapper | `npx agentjail-cli init` | pending publish |
-| Smithery | `npx -y @smithery/cli install agentjail --client claude` | pending publish |
+| PyPI | `pip install agentvigilante` | pending publish |
+| npx wrapper | `npx agentvigilante-cli init` | pending publish |
+| Smithery | `npx -y @smithery/cli install agentvigilante --client claude` | pending publish |
 
-Registry stubs live in [`smithery.yaml`](smithery.yaml) and [`npm/agentjail-cli/`](npm/agentjail-cli/).
+Registry stubs live in [`smithery.yaml`](smithery.yaml) and [`npm/agentvigilante-cli/`](npm/agentvigilante-cli/).
 
 ---
 

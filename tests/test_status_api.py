@@ -9,8 +9,8 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from agent_jail.dashboard.server import create_app
-from agent_jail.core import proxy as proxy_module
+from agent_vigilante.dashboard.server import create_app
+from agent_vigilante.core import proxy as proxy_module
 
 
 class StatusApiTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class StatusApiTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             app = create_app(
                 workdir=tmp,
-                base_image="agentjail-sandbox:local",
+                base_image="agentvigilante-sandbox:local",
                 proxy_port=18901,
                 native_notify=False,
                 autopilot=True,
@@ -49,7 +49,7 @@ class StatusApiTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             app = create_app(
                 workdir=tmp,
-                base_image="agentjail-sandbox:local",
+                base_image="agentvigilante-sandbox:local",
                 proxy_port=18902,
                 native_notify=False,
                 autopilot=True,
@@ -72,7 +72,7 @@ class StatusApiTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             app = create_app(
                 workdir=tmp,
-                base_image="agentjail-sandbox:local",
+                base_image="agentvigilante-sandbox:local",
                 proxy_port=18903,
                 native_notify=False,
                 autopilot=True,

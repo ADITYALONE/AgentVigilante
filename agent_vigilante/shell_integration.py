@@ -4,22 +4,22 @@ from __future__ import annotations
 
 from pathlib import Path
 
-BEGIN_MARK = "# >>> agentjail >>>"
-END_MARK = "# <<< agentjail <<<"
+BEGIN_MARK = "# >>> agentvigilante >>>"
+END_MARK = "# <<< agentvigilante <<<"
 
 
 def _block(url: str, shim_dir: str) -> str:
     return (
         f"{BEGIN_MARK}\n"
         f'export PATH="{shim_dir}:$PATH"\n'
-        "export AGENTJAIL_ACTIVE=1\n"
-        f'export AGENTJAIL_URL="{url}"\n'
+        "export AGENTVIGILANTE_ACTIVE=1\n"
+        f'export AGENTVIGILANTE_URL="{url}"\n'
         f"{END_MARK}\n"
     )
 
 
-def strip_agentjail_block(text: str) -> str:
-    """Remove marked AgentJail block(s) from rc file contents."""
+def strip_agentvigilante_block(text: str) -> str:
+    """Remove marked AgentVigilante block(s) from rc file contents."""
     lines = text.splitlines(keepends=True)
     out: list[str] = []
     skipping = False
@@ -36,8 +36,8 @@ def strip_agentjail_block(text: str) -> str:
     return "".join(out)
 
 
-def inject_agentjail_block(text: str, *, url: str, shim_dir: str) -> str:
-    cleaned = strip_agentjail_block(text)
+def inject_agentvigilante_block(text: str, *, url: str, shim_dir: str) -> str:
+    cleaned = strip_agentvigilante_block(text)
     if cleaned and not cleaned.endswith("\n"):
         cleaned += "\n"
     if cleaned and not cleaned.endswith("\n\n"):
@@ -67,7 +67,7 @@ def enable_shell_integration(
             existing = path.read_text(encoding="utf-8")
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
-        updated = inject_agentjail_block(existing, url=url, shim_dir=block_shim)
+        updated = inject_agentvigilante_block(existing, url=url, shim_dir=block_shim)
         path.write_text(updated, encoding="utf-8")
         written.append(path)
     return written
@@ -85,7 +85,7 @@ def disable_shell_integration(
         if not path.is_file():
             continue
         existing = path.read_text(encoding="utf-8")
-        cleaned = strip_agentjail_block(existing)
+        cleaned = strip_agentvigilante_block(existing)
         if cleaned != existing:
             path.write_text(cleaned, encoding="utf-8")
             modified.append(path)

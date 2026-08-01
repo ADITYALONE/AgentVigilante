@@ -6,33 +6,33 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_jail.shell_integration import (
+from agent_vigilante.shell_integration import (
     BEGIN_MARK,
     disable_shell_integration,
     enable_shell_integration,
-    inject_agentjail_block,
-    strip_agentjail_block,
+    inject_agentvigilante_block,
+    strip_agentvigilante_block,
 )
 
 
 class ShellIntegrationTests(unittest.TestCase):
     def test_inject_idempotent(self) -> None:
         text = "export FOO=1\n"
-        once = inject_agentjail_block(
+        once = inject_agentvigilante_block(
             text, url="http://127.0.0.1:8420", shim_dir="/tmp/shims"
         )
-        twice = inject_agentjail_block(
+        twice = inject_agentvigilante_block(
             once, url="http://127.0.0.1:8420", shim_dir="/tmp/shims"
         )
         self.assertEqual(once.count(BEGIN_MARK), 1)
         self.assertEqual(twice.count(BEGIN_MARK), 1)
-        self.assertIn("AGENTJAIL_ACTIVE=1", twice)
+        self.assertIn("AGENTVIGILANTE_ACTIVE=1", twice)
 
     def test_strip(self) -> None:
-        text = inject_agentjail_block(
+        text = inject_agentvigilante_block(
             "hi\n", url="http://x", shim_dir="/s"
         )
-        cleaned = strip_agentjail_block(text)
+        cleaned = strip_agentvigilante_block(text)
         self.assertNotIn(BEGIN_MARK, cleaned)
         self.assertIn("hi", cleaned)
 
@@ -47,7 +47,7 @@ class ShellIntegrationTests(unittest.TestCase):
                 rc_paths=[zsh, root / ".bashrc"],
             )
             self.assertEqual(len(written), 2)
-            self.assertIn("agentjail", zsh.read_text(encoding="utf-8"))
+            self.assertIn("agentvigilante", zsh.read_text(encoding="utf-8"))
             modified = disable_shell_integration(rc_paths=[zsh, root / ".bashrc"])
             self.assertIn(zsh, modified)
             self.assertNotIn(BEGIN_MARK, zsh.read_text(encoding="utf-8"))

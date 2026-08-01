@@ -9,8 +9,8 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
-LABEL = "com.agentjail.daemon"
-SYSTEMD_UNIT = "agentjail.service"
+LABEL = "com.agentvigilante.daemon"
+SYSTEMD_UNIT = "agentvigilante.service"
 
 
 def python_for_service(python_executable: str | None = None) -> str:
@@ -37,8 +37,8 @@ def render_launchd_plist(
     workdir: str | None = None,
     log_dir: Path | None = None,
 ) -> str:
-    logs = log_dir or (Path.home() / ".agentjail" / "logs")
-    wd = workdir or str(Path.home() / ".agentjail" / "workspace")
+    logs = log_dir or (Path.home() / ".agentvigilante" / "logs")
+    wd = workdir or str(Path.home() / ".agentvigilante" / "workspace")
     # XML-escape paths
     def esc(s: str) -> str:
         return (
@@ -51,7 +51,7 @@ def render_launchd_plist(
     args = [
         python,
         "-m",
-        "agent_jail",
+        "agent_vigilante",
         "start",
         "--host",
         url_host,
@@ -85,7 +85,7 @@ def render_launchd_plist(
             <string>{esc(str(logs / "daemon.err.log"))}</string>
             <key>EnvironmentVariables</key>
             <dict>
-                <key>AGENTJAIL_URL</key>
+                <key>AGENTVIGILANTE_URL</key>
                 <string>http://{url_host}:{port}</string>
             </dict>
         </dict>
@@ -101,15 +101,15 @@ def render_systemd_unit(
     port: int = 8420,
     workdir: str | None = None,
 ) -> str:
-    wd = workdir or str(Path.home() / ".agentjail" / "workspace")
+    wd = workdir or str(Path.home() / ".agentvigilante" / "workspace")
     exec_start = (
-        f"{python} -m agent_jail start --host {url_host} --port {port} "
+        f"{python} -m agent_vigilante start --host {url_host} --port {port} "
         f"--workdir {wd} --no-browser --no-native-notify"
     )
     return textwrap.dedent(
         f"""\
         [Unit]
-        Description=AgentJail Invisible Security daemon
+        Description=AgentVigilante Invisible Security daemon
         After=default.target
 
         [Service]
@@ -117,7 +117,7 @@ def render_systemd_unit(
         ExecStart={exec_start}
         Restart=on-failure
         RestartSec=3
-        Environment=AGENTJAIL_URL=http://{url_host}:{port}
+        Environment=AGENTVIGILANTE_URL=http://{url_host}:{port}
 
         [Install]
         WantedBy=default.target
@@ -136,9 +136,9 @@ def install_service(
     py = python_for_service(python)
     system = platform.system()
     h = home or Path.home()
-    log_dir = h / ".agentjail" / "logs"
+    log_dir = h / ".agentvigilante" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    (h / ".agentjail" / "workspace").mkdir(parents=True, exist_ok=True)
+    (h / ".agentvigilante" / "workspace").mkdir(parents=True, exist_ok=True)
 
     if system == "Darwin":
         path = launchd_plist_path(h)

@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in AgentJail misbehaves
+about: Something in AgentVigilante misbehaves
 labels: bug
 ---
 
@@ -18,11 +18,11 @@ labels: bug
 
 - OS:
 - Python (`python -V`):
-- AgentJail version (`pip show agentjail`):
+- AgentVigilante version (`pip show agentvigilante`):
 - Docker running: yes / no
 - Mode: interactive / invisible
 
 **Logs**
 
-<!-- Output from `agentjail start`, or ~/.agentjail/logs/ in invisible mode.
+<!-- Output from `agentvigilante start`, or ~/.agentvigilante/logs/ in invisible mode.
      Do not paste secrets. -->

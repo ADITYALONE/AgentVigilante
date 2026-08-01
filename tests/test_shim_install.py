@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agent_jail.shim import install_shims, resolve_real_bin, shim_dir
+from agent_vigilante.shim import install_shims, resolve_real_bin, shim_dir
 
 
 class ShimInstallTests(unittest.TestCase):
@@ -39,7 +39,7 @@ class ShimInstallTests(unittest.TestCase):
 
             script = (shim_dir(root) / "bash").read_text(encoding="utf-8")
             self.assertIn("exec-shim", script)
-            self.assertIn("AGENTJAIL_BYPASS", script)
+            self.assertIn("AGENTVIGILANTE_BYPASS", script)
             mode = (shim_dir(root) / "bash").stat().st_mode
             self.assertTrue(mode & stat.S_IXUSR)
 

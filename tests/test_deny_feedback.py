@@ -10,9 +10,9 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from agent_jail.core.command_analyzer import RiskLevel
-from agent_jail.core.proxy import JobResult, JobStatus, store
-from agent_jail.mcp_server import _summarize_job
+from agent_vigilante.core.command_analyzer import RiskLevel
+from agent_vigilante.core.proxy import JobResult, JobStatus, store
+from agent_vigilante.mcp_server import _summarize_job
 
 
 class DenyFeedbackTests(unittest.IsolatedAsyncioTestCase):
@@ -65,7 +65,7 @@ class DenyFeedbackTests(unittest.IsolatedAsyncioTestCase):
 class DenyHttpTests(unittest.TestCase):
     def test_deny_endpoint_requires_reason(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("agent_jail.core.isolation.docker.from_env") as from_env:
+            with mock.patch("agent_vigilante.core.isolation.docker.from_env") as from_env:
                 client_mock = mock.MagicMock()
                 client_mock.ping.return_value = True
                 from_env.return_value = client_mock
@@ -74,14 +74,14 @@ class DenyHttpTests(unittest.TestCase):
                     return asyncio.create_task(asyncio.sleep(3600))
 
                 with mock.patch(
-                    "agent_jail.core.egress_proxy.WhitelistProxy.start_background",
+                    "agent_vigilante.core.egress_proxy.WhitelistProxy.start_background",
                     fake_start,
                 ):
-                    from agent_jail.dashboard.server import create_app
+                    from agent_vigilante.dashboard.server import create_app
 
                     app = create_app(
                         workdir=tmp,
-                        base_image="agentjail-sandbox:local",
+                        base_image="agentvigilante-sandbox:local",
                         native_notify=False,
                     )
                     with TestClient(app) as client:

@@ -1,8 +1,8 @@
-# Contributing to AgentJail
+# Contributing to AgentVigilante
 
 Thanks for helping build a saner perimeter for AI coding agents.
 
-AgentJail is a security tool. A change that makes the product friendlier but
+AgentVigilante is a security tool. A change that makes the product friendlier but
 quietly widens the blast radius is a regression, so most of this guide is about
 proving that containment still holds.
 
@@ -13,7 +13,7 @@ proving that containment still holds.
    add a test that pins the new behavior.
 2. **Interactive mode stays the default.** Invisible mode, autopilot, and shell
    integration are opt-in. Do not enable them implicitly.
-3. **No new bypasses.** Anything that sets `AGENTJAIL_BYPASS`, skips the
+3. **No new bypasses.** Anything that sets `AGENTVIGILANTE_BYPASS`, skips the
    analyzer, or executes outside the hologram needs an explicit justification.
 4. **Document residual risk.** If your feature can be circumvented (for example
    absolute `/bin/zsh` defeating PATH shims), write it down rather than implying
@@ -29,10 +29,10 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-agentjail setup                 # builds agentjail-sandbox:local (needs Docker)
+agentvigilante setup                 # builds agentvigilante-sandbox:local (needs Docker)
 
 cd web && npm install && npm run build && cd ..
-agentjail start                 # http://127.0.0.1:8420
+agentvigilante start                 # http://127.0.0.1:8420
 ```
 
 `web/dist` is gitignored, so build the UI at least once or the server falls back
@@ -64,10 +64,10 @@ Add tests alongside the area you touch:
 
 | Path | What lives there |
 |------|------------------|
-| `agent_jail/core/` | Analyzer, hologram, sandbox, egress proxy, HTTP routes |
-| `agent_jail/cli.py` | `init`, `setup`, `start`, `wrap`, `invisible`, `service` |
-| `agent_jail/shim.py`, `exec_shim.py`, `wrap.py` | PATH interception |
-| `agent_jail/notify.py` | Native Approve/Deny dialogs |
+| `agent_vigilante/core/` | Analyzer, hologram, sandbox, egress proxy, HTTP routes |
+| `agent_vigilante/cli.py` | `init`, `setup`, `start`, `wrap`, `invisible`, `service` |
+| `agent_vigilante/shim.py`, `exec_shim.py`, `wrap.py` | PATH interception |
+| `agent_vigilante/notify.py` | Native Approve/Deny dialogs |
 | `web/` | Vite + React console and landing page |
 | `extensions/vscode/` | Cursor / VS Code status bar extension |
 

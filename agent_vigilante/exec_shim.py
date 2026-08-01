@@ -1,4 +1,4 @@
-"""Blocking client used by PATH shims — submit argv to the AgentJail daemon."""
+"""Blocking client used by PATH shims — submit argv to the AgentVigilante daemon."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any, Sequence
 
 import httpx
 
-from agent_jail.shim import real_bin_for
+from agent_vigilante.shim import real_bin_for
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8420"
 TERMINAL_STATUSES = frozenset(
@@ -21,7 +21,7 @@ EX_TEMPFAIL = 75
 
 
 def base_url() -> str:
-    return os.environ.get("AGENTJAIL_URL", DEFAULT_BASE_URL).rstrip("/")
+    return os.environ.get("AGENTVIGILANTE_URL", DEFAULT_BASE_URL).rstrip("/")
 
 
 def _flag_has_c(flag: str) -> bool:
@@ -93,16 +93,16 @@ def reconstruct_command(bin_name: str, args: Sequence[str]) -> str:
 
 
 def passthrough_real(bin_name: str, args: Sequence[str], *, root=None) -> int:
-    """Exec the real host binary with ``AGENTJAIL_BYPASS`` set (never returns on success)."""
+    """Exec the real host binary with ``AGENTVIGILANTE_BYPASS`` set (never returns on success)."""
     real = real_bin_for(bin_name, root)
     if real is None:
         print(
-            f"agentjail exec-shim: real binary for {bin_name!r} not found",
+            f"agentvigilante exec-shim: real binary for {bin_name!r} not found",
             file=sys.stderr,
         )
         return 127
     env = os.environ.copy()
-    env["AGENTJAIL_BYPASS"] = "1"
+    env["AGENTVIGILANTE_BYPASS"] = "1"
     os.execve(str(real), [str(real), *args], env)
     return 127  # pragma: no cover
 
@@ -126,18 +126,18 @@ def _print_result(job: dict[str, Any]) -> int:
     status = job.get("status")
     if status == "denied":
         msg = feedback or error or "Denied by operator"
-        print(f"agentjail: {msg}", file=sys.stderr)
+        print(f"agentvigilante: {msg}", file=sys.stderr)
         return 1
     if status == "blocked":
-        print(f"agentjail: {error or 'blocked'}", file=sys.stderr)
+        print(f"agentvigilante: {error or 'blocked'}", file=sys.stderr)
         return 1
     if status == "killed":
-        print("agentjail: job killed", file=sys.stderr)
+        print("agentvigilante: job killed", file=sys.stderr)
         return 137
     if status == "failed":
         code = result.get("exit_code")
         if error and not stderr:
-            print(f"agentjail: {error}", file=sys.stderr)
+            print(f"agentvigilante: {error}", file=sys.stderr)
         return int(code) if code is not None else 1
     code = result.get("exit_code")
     if code is None:
@@ -162,14 +162,14 @@ def run_via_daemon(
                 )
             except httpx.ConnectError:
                 print(
-                    f"agentjail: cannot connect to daemon at {base}. "
-                    "Start it with: agentjail start",
+                    f"agentvigilante: cannot connect to daemon at {base}. "
+                    "Start it with: agentvigilante start",
                     file=sys.stderr,
                 )
                 return EX_TEMPFAIL
             if create.status_code >= 400:
                 print(
-                    f"agentjail: create failed ({create.status_code}): {create.text}",
+                    f"agentvigilante: create failed ({create.status_code}): {create.text}",
                     file=sys.stderr,
                 )
                 return 1
@@ -189,13 +189,13 @@ def run_via_daemon(
                     return _print_result(job)
                 if time.monotonic() > deadline:
                     print(
-                        f"agentjail: timed out waiting for job {job_id}",
+                        f"agentvigilante: timed out waiting for job {job_id}",
                         file=sys.stderr,
                     )
                     return EX_TEMPFAIL
                 time.sleep(0.4)
     except httpx.HTTPError as exc:
-        print(f"agentjail: HTTP error: {exc}", file=sys.stderr)
+        print(f"agentvigilante: HTTP error: {exc}", file=sys.stderr)
         return 1
 
 
@@ -207,7 +207,7 @@ def exec_shim_main(
     url: str | None = None,
     root=None,
 ) -> int:
-    if os.environ.get("AGENTJAIL_BYPASS"):
+    if os.environ.get("AGENTVIGILANTE_BYPASS"):
         return passthrough_real(bin_name, args, root=root)
 
     if is_interactive_shell(bin_name, args):
@@ -215,6 +215,6 @@ def exec_shim_main(
 
     command = reconstruct_command(bin_name, list(args))
     if not command.strip():
-        print("agentjail exec-shim: empty command", file=sys.stderr)
+        print("agentvigilante exec-shim: empty command", file=sys.stderr)
         return 2
     return run_via_daemon(command, timeout=timeout, url=url)

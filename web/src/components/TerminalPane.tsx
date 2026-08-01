@@ -39,7 +39,7 @@ export function TerminalPane({ jobId, onDone }: Props) {
     term.loadAddon(fit)
     term.open(hostRef.current)
     fit.fit()
-    term.writeln("\x1b[38;2;148;163;184m[SYSTEM]\x1b[0m AgentJail containment gateway ready.")
+    term.writeln("\x1b[38;2;148;163;184m[SYSTEM]\x1b[0m AgentVigilante containment gateway ready.")
     term.writeln("\x1b[38;2;148;163;184m[SYSTEM]\x1b[0m Front visual: modular mosaic landscape.")
     term.writeln("")
     termRef.current = term

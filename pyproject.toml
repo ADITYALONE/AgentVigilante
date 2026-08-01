@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentjail"
+name = "agentvigilante"
 version = "0.3.0"
 description = "Local containment runtime and firewall for AI coding agents"
 readme = "README.md"
@@ -25,16 +25,16 @@ dependencies = [
 dev = ["build", "twine"]
 
 [project.scripts]
-agentjail = "agent_jail.cli:main"
+agentvigilante = "agent_vigilante.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/adityapunjani/agentjail"
-Documentation = "https://github.com/adityapunjani/agentjail#readme"
+Homepage = "https://github.com/ADITYALONE/AgentVigilante"
+Documentation = "https://github.com/ADITYALONE/AgentVigilante#readme"
 
 [tool.setuptools.packages.find]
-include = ["agent_jail*"]
+include = ["agent_vigilante*"]
 
 [tool.setuptools.package-data]
-agent_jail = [
+agent_vigilante = [
     "dashboard/templates/*.html",
 ]

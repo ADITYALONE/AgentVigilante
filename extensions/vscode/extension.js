@@ -1,5 +1,5 @@
 /**
- * AgentJail VS Code / Cursor extension — status bar + Approve/Block prompts.
+ * AgentVigilante VS Code / Cursor extension — status bar + Approve/Block prompts.
  * Plain JS (no build step). Compatible with Cursor and VS Code.
  */
 const vscode = require("vscode");
@@ -15,7 +15,7 @@ const toastedBlocks = new Set();
 
 function baseUrl() {
   return (
-    vscode.workspace.getConfiguration("agentjail").get("url") ||
+    vscode.workspace.getConfiguration("agentvigilante").get("url") ||
     "http://127.0.0.1:8420"
   ).replace(/\/$/, "");
 }
@@ -52,7 +52,7 @@ async function promptPending(job) {
     return;
   }
   promptedJobs.add(job.id);
-  const msg = `AgentJail anomaly: ${truncate(job.command, 100)} (${job.risk_reason || "review"})`;
+  const msg = `AgentVigilante anomaly: ${truncate(job.command, 100)} (${job.risk_reason || "review"})`;
   const pick = await vscode.window.showWarningMessage(
     msg,
     "Approve",
@@ -62,18 +62,18 @@ async function promptPending(job) {
   try {
     if (pick === "Approve") {
       await postJson(`/v1/commands/${job.id}/approve`);
-      vscode.window.setStatusBarMessage("AgentJail: approved", 3000);
+      vscode.window.setStatusBarMessage("AgentVigilante: approved", 3000);
     } else if (pick === "Block") {
       await postJson(`/v1/commands/${job.id}/deny`, {
         reason: "Denied via IDE extension",
         revert: false,
       });
-      vscode.window.setStatusBarMessage("AgentJail: blocked", 3000);
+      vscode.window.setStatusBarMessage("AgentVigilante: blocked", 3000);
     } else if (pick === "Open Console") {
       vscode.env.openExternal(vscode.Uri.parse(`${baseUrl()}/console`));
     }
   } catch (err) {
-    vscode.window.showErrorMessage(`AgentJail action failed: ${err.message || err}`);
+    vscode.window.showErrorMessage(`AgentVigilante action failed: ${err.message || err}`);
   }
 }
 
@@ -84,7 +84,7 @@ async function toastBlocked(ev) {
   }
   toastedBlocks.add(key);
   await vscode.window.showErrorMessage(
-    `AgentJail blocked: ${truncate(ev.command, 100)} — ${truncate(ev.risk_reason, 80)}`,
+    `AgentVigilante blocked: ${truncate(ev.command, 100)} — ${truncate(ev.risk_reason, 80)}`,
     "Open Console"
   ).then((pick) => {
     if (pick === "Open Console") {
@@ -99,7 +99,7 @@ async function refresh() {
     const pending = await fetchJson("/v1/pending");
     const n = status.pending_count ?? (pending && pending.length) || 0;
     const mode = status.mode || "interactive";
-    statusBar.text = `$(shield) AgentJail: Active (${n} pending)`;
+    statusBar.text = `$(shield) AgentVigilante: Active (${n} pending)`;
     statusBar.tooltip = `mode=${mode} autopilot=${status.autopilot} — click to open console`;
     statusBar.backgroundColor =
       n > 0
@@ -121,8 +121,8 @@ async function refresh() {
       /* older daemon without events endpoint */
     }
   } catch {
-    statusBar.text = "$(shield) AgentJail: Unreachable";
-    statusBar.tooltip = `Cannot reach ${baseUrl()} — run agentjail start or invisible enable`;
+    statusBar.text = "$(shield) AgentVigilante: Unreachable";
+    statusBar.tooltip = `Cannot reach ${baseUrl()} — run agentvigilante start or invisible enable`;
     statusBar.backgroundColor = new vscode.ThemeColor(
       "statusBarItem.errorBackground"
     );
@@ -137,22 +137,22 @@ function activate(context) {
     vscode.StatusBarAlignment.Left,
     100
   );
-  statusBar.command = "agentjail.openConsole";
-  statusBar.text = "$(shield) AgentJail: …";
+  statusBar.command = "agentvigilante.openConsole";
+  statusBar.text = "$(shield) AgentVigilante: …";
   statusBar.show();
   context.subscriptions.push(statusBar);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("agentjail.openConsole", () => {
+    vscode.commands.registerCommand("agentvigilante.openConsole", () => {
       vscode.env.openExternal(vscode.Uri.parse(`${baseUrl()}/console`));
     })
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand("agentjail.refresh", () => refresh())
+    vscode.commands.registerCommand("agentvigilante.refresh", () => refresh())
   );
 
   const ms =
-    vscode.workspace.getConfiguration("agentjail").get("pollIntervalMs") || 2000;
+    vscode.workspace.getConfiguration("agentvigilante").get("pollIntervalMs") || 2000;
   pollTimer = setInterval(() => {
     refresh().catch(() => {});
   }, ms);

@@ -1,7 +1,7 @@
-# Smithery / Glama MCP registry stub for AgentJail
-# Install (once published): npx -y @smithery/cli install agentjail --client claude
+# Smithery / Glama MCP registry stub for AgentVigilante
+# Install (once published): npx -y @smithery/cli install agentvigilante --client claude
 
-name: agentjail
+name: agentvigilante
 version: "0.3.0"
 description: Holographic containment runtime and kernel-tracing firewall for AI coding agents
 
@@ -10,15 +10,15 @@ startCommand:
   configSchema:
     type: object
     properties:
-      agentJailUrl:
+      agentVigilanteUrl:
         type: string
         default: "http://127.0.0.1:8420"
-        description: Base URL of a running AgentJail control panel (agentjail start)
+        description: Base URL of a running AgentVigilante control panel (agentvigilante start)
   commandFunction: |
     (config) => ({
       command: "python",
-      args: ["-m", "agent_jail.mcp_server"],
+      args: ["-m", "agent_vigilante.mcp_server"],
       env: {
-        AGENTJAIL_URL: config.agentJailUrl || "http://127.0.0.1:8420"
+        AGENTVIGILANTE_URL: config.agentVigilanteUrl || "http://127.0.0.1:8420"
       }
     })

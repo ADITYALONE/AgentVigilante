@@ -26,7 +26,7 @@ export function LandingPage() {
           to="/"
           className="font-heading text-sm font-semibold tracking-[0.2em] text-foreground"
         >
-          AGENTJAIL
+          AGENTVIGILANTE
         </Link>
         <nav className="flex items-center gap-5 font-heading text-sm tracking-wide text-muted-foreground">
           <a href="#how" className="hover:text-foreground">
@@ -41,7 +41,7 @@ export function LandingPage() {
       <Hero07
         tagline="Local containment for coding agents"
         title="Give agents room to work—without giving them the keys."
-        description="AgentJail sits between your AI and your machine: risk gating, holographic sandboxes, PATH interception, and whitelist egress—with a live console when you want the front seat, or Invisible mode when you don’t."
+        description="AgentVigilante sits between your AI and your machine: risk gating, holographic sandboxes, PATH interception, and whitelist egress—with a live console when you want the front seat, or Invisible mode when you don’t."
         landscapeImage="/hero-landscape.png"
         landscapeAlt="A traveler on a high ridge above clouds, framed by a digital grid overlay"
         animation="subtle"
@@ -120,7 +120,7 @@ export function LandingPage() {
       <footer className="border-t border-border/60 px-6 py-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="font-heading text-xs tracking-[0.18em] text-muted-foreground">
-            AGENTJAIL
+            AGENTVIGILANTE
           </span>
           <span className="font-mono text-[11px] text-muted-foreground">
             Hologram · PATH wrap · autopilot · whitelist egress

@@ -5,13 +5,13 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from agent_jail.notify import prompt_risky_choice
+from agent_vigilante.notify import prompt_risky_choice
 
 
 class NotifyPromptTests(unittest.TestCase):
     def test_macos_approve(self) -> None:
-        with mock.patch("agent_jail.notify.platform.system", return_value="Darwin"):
-            with mock.patch("agent_jail.notify.subprocess.run") as run:
+        with mock.patch("agent_vigilante.notify.platform.system", return_value="Darwin"):
+            with mock.patch("agent_vigilante.notify.subprocess.run") as run:
                 run.return_value = mock.Mock(
                     returncode=0, stdout="button returned:Approve\n", stderr=""
                 )
@@ -25,8 +25,8 @@ class NotifyPromptTests(unittest.TestCase):
         self.assertEqual(run.call_args.args[0][0], "osascript")
 
     def test_linux_without_tools_dismisses(self) -> None:
-        with mock.patch("agent_jail.notify.platform.system", return_value="Linux"):
-            with mock.patch("agent_jail.notify.shutil.which", return_value=None):
+        with mock.patch("agent_vigilante.notify.platform.system", return_value="Linux"):
+            with mock.patch("agent_vigilante.notify.shutil.which", return_value=None):
                 choice = prompt_risky_choice(
                     command="npm install x",
                     risk_reason=None,

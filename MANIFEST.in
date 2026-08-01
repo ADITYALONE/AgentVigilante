@@ -1,4 +1,4 @@
-include agent_jail/dashboard/templates/*.html
+include agent_vigilante/dashboard/templates/*.html
 include README.md
 include requirements.txt
 include scripts/setup.sh

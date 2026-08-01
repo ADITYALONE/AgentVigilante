@@ -1,4 +1,4 @@
-"""AgentJail user config — ``~/.agentjail/config.json``."""
+"""AgentVigilante user config — ``~/.agentvigilante/config.json``."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_jail.shim import agentjail_home
+from agent_vigilante.shim import agentvigilante_home
 
 Mode = Literal["interactive", "invisible"]
 
@@ -16,7 +16,7 @@ DEFAULT_URL = "http://127.0.0.1:8420"
 
 
 @dataclass
-class AgentJailConfig:
+class AgentVigilanteConfig:
     mode: Mode = "interactive"
     autopilot: bool = False
     shell_integration: bool = False
@@ -30,14 +30,14 @@ class AgentJailConfig:
 
 
 def config_path(root: Path | None = None) -> Path:
-    return agentjail_home(root) / "config.json"
+    return agentvigilante_home(root) / "config.json"
 
 
-def default_config() -> AgentJailConfig:
-    return AgentJailConfig(python_executable=str(Path(sys.executable).resolve()))
+def default_config() -> AgentVigilanteConfig:
+    return AgentVigilanteConfig(python_executable=str(Path(sys.executable).resolve()))
 
 
-def load_config(root: Path | None = None) -> AgentJailConfig:
+def load_config(root: Path | None = None) -> AgentVigilanteConfig:
     path = config_path(root)
     cfg = default_config()
     if not path.is_file():
@@ -48,7 +48,7 @@ def load_config(root: Path | None = None) -> AgentJailConfig:
         return cfg
     if not isinstance(raw, dict):
         return cfg
-    known = {f.name for f in fields(AgentJailConfig)}
+    known = {f.name for f in fields(AgentVigilanteConfig)}
     data: dict[str, Any] = {}
     for key, value in raw.items():
         if key in known:
@@ -60,11 +60,11 @@ def load_config(root: Path | None = None) -> AgentJailConfig:
     merged["mode"] = mode
     if not merged.get("python_executable"):
         merged["python_executable"] = str(Path(sys.executable).resolve())
-    return AgentJailConfig(**merged)
+    return AgentVigilanteConfig(**merged)
 
 
-def save_config(cfg: AgentJailConfig, root: Path | None = None) -> Path:
-    home = agentjail_home(root)
+def save_config(cfg: AgentVigilanteConfig, root: Path | None = None) -> Path:
+    home = agentvigilante_home(root)
     home.mkdir(parents=True, exist_ok=True)
     path = config_path(root)
     payload = asdict(cfg)
@@ -72,7 +72,7 @@ def save_config(cfg: AgentJailConfig, root: Path | None = None) -> Path:
     return path
 
 
-def apply_invisible_defaults(cfg: AgentJailConfig) -> AgentJailConfig:
+def apply_invisible_defaults(cfg: AgentVigilanteConfig) -> AgentVigilanteConfig:
     cfg.mode = "invisible"
     cfg.autopilot = True
     cfg.shell_integration = True
@@ -82,7 +82,7 @@ def apply_invisible_defaults(cfg: AgentJailConfig) -> AgentJailConfig:
     return cfg
 
 
-def apply_interactive_defaults(cfg: AgentJailConfig) -> AgentJailConfig:
+def apply_interactive_defaults(cfg: AgentVigilanteConfig) -> AgentVigilanteConfig:
     cfg.mode = "interactive"
     cfg.autopilot = False
     cfg.shell_integration = False

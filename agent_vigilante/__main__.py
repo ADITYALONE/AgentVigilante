@@ -1,10 +1,10 @@
-"""``python -m agent_jail`` → CLI."""
+"""``python -m agent_vigilante`` → CLI."""
 
 from __future__ import annotations
 
 import sys
 
-from agent_jail.cli import main
+from agent_vigilante.cli import main
 
 if __name__ == "__main__":
     sys.exit(main())

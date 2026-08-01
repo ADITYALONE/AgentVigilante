@@ -1,9 +1,9 @@
 {
-  "name": "agentjail",
-  "displayName": "AgentJail",
+  "name": "agentvigilante",
+  "displayName": "AgentVigilante",
   "description": "Invisible Security status bar — Approve/Block anomalies without leaving the IDE",
   "version": "0.1.0",
-  "publisher": "agentjail",
+  "publisher": "agentvigilante",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -13,23 +13,23 @@
   "contributes": {
     "commands": [
       {
-        "command": "agentjail.openConsole",
-        "title": "AgentJail: Open Console"
+        "command": "agentvigilante.openConsole",
+        "title": "AgentVigilante: Open Console"
       },
       {
-        "command": "agentjail.refresh",
-        "title": "AgentJail: Refresh Status"
+        "command": "agentvigilante.refresh",
+        "title": "AgentVigilante: Refresh Status"
       }
     ],
     "configuration": {
-      "title": "AgentJail",
+      "title": "AgentVigilante",
       "properties": {
-        "agentjail.url": {
+        "agentvigilante.url": {
           "type": "string",
           "default": "http://127.0.0.1:8420",
-          "description": "AgentJail daemon base URL"
+          "description": "AgentVigilante daemon base URL"
         },
-        "agentjail.pollIntervalMs": {
+        "agentvigilante.pollIntervalMs": {
           "type": "number",
           "default": 2000,
           "description": "Status poll interval in milliseconds"

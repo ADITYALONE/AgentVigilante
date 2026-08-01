@@ -1,4 +1,4 @@
-"""AgentJail CLI — ``agentjail init`` / ``start`` / ``setup``."""
+"""AgentVigilante CLI — ``agentvigilante init`` / ``start`` / ``setup``."""
 
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_AGENTJAIL_URL = "http://127.0.0.1:8420"
+DEFAULT_AGENTVIGILANTE_URL = "http://127.0.0.1:8420"
 
 
-def agentjail_mcp_block(url: str = DEFAULT_AGENTJAIL_URL) -> dict[str, Any]:
+def agentvigilante_mcp_block(url: str = DEFAULT_AGENTVIGILANTE_URL) -> dict[str, Any]:
     return {
         "command": sys.executable,
-        "args": ["-m", "agent_jail.mcp_server"],
-        "env": {"AGENTJAIL_URL": url},
+        "args": ["-m", "agent_vigilante.mcp_server"],
+        "env": {"AGENTVIGILANTE_URL": url},
     }
 
 
@@ -66,10 +66,10 @@ def _backup_path(file_path: Path) -> Path:
 def patch_json_config(
     file_path: Path,
     *,
-    url: str = DEFAULT_AGENTJAIL_URL,
+    url: str = DEFAULT_AGENTVIGILANTE_URL,
     create_parents: bool = True,
 ) -> tuple[bool, str]:
-    """Safely inject AgentJail into an MCP JSON file.
+    """Safely inject AgentVigilante into an MCP JSON file.
 
     Returns ``(ok, message)``.
     """
@@ -93,7 +93,7 @@ def patch_json_config(
         if "mcpServers" not in data or not isinstance(data.get("mcpServers"), dict):
             data["mcpServers"] = {}
 
-        data["mcpServers"]["agentjail"] = agentjail_mcp_block(url)
+        data["mcpServers"]["agentvigilante"] = agentvigilante_mcp_block(url)
 
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
@@ -105,7 +105,7 @@ def patch_json_config(
 
 
 def cmd_init(args: argparse.Namespace) -> int:
-    print("\nAgentJail Auto-Installer")
+    print("\nAgentVigilante Auto-Installer")
     print("-" * 30)
 
     url = args.url
@@ -160,14 +160,14 @@ def cmd_init(args: argparse.Namespace) -> int:
             return 1
 
     print(
-        f"\nOK AgentJail connected in {patched} config(s). "
-        "Restart Claude Code or Cursor, then run: agentjail start"
+        f"\nOK AgentVigilante connected in {patched} config(s). "
+        "Restart Claude Code or Cursor, then run: agentvigilante start"
     )
     return 0
 
 
 def cmd_setup(args: argparse.Namespace) -> int:
-    """Build the AgentJail sandbox Docker image."""
+    """Build the AgentVigilante sandbox Docker image."""
     root = Path(__file__).resolve().parents[1]
     script = root / "scripts" / "setup.sh"
     image = args.image
@@ -205,7 +205,7 @@ def _add_start_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--proxy-port", type=int, default=8888)
     parser.add_argument(
         "--base-image",
-        default="agentjail-sandbox:local",
+        default="agentvigilante-sandbox:local",
         help="Docker image for sandboxed execution",
     )
     parser.add_argument(
@@ -233,7 +233,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
 
-    from agent_jail.config import load_config
+    from agent_vigilante.config import load_config
 
     cfg = load_config()
     workdir = Path(args.workdir).expanduser().resolve()
@@ -241,7 +241,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         workdir = Path(cfg.workdir).expanduser().resolve()
     workdir.mkdir(parents=True, exist_ok=True)
 
-    from agent_jail.dashboard.server import create_app
+    from agent_vigilante.dashboard.server import create_app
 
     url = f"http://{args.host}:{args.port}/"
     notify_url = f"http://{args.host}:{args.port}"
@@ -261,7 +261,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     )
 
     print(
-        f"AgentJail listening on {url}\n"
+        f"AgentVigilante listening on {url}\n"
         f"  mode:        {cfg.mode} (autopilot={cfg.autopilot})\n"
         f"  dashboard:   {url}\n"
         f"  console:     http://{args.host}:{args.port}/console\n"
@@ -287,7 +287,7 @@ def cmd_start(args: argparse.Namespace) -> int:
 
 
 def cmd_shim_install(args: argparse.Namespace) -> int:
-    from agent_jail.shim import install_shims, shim_dir
+    from agent_vigilante.shim import install_shims, shim_dir
 
     root = Path(args.root).expanduser() if args.root else None
     meta = install_shims(root)
@@ -300,7 +300,7 @@ def cmd_shim_install(args: argparse.Namespace) -> int:
 
 
 def cmd_exec_shim(args: argparse.Namespace) -> int:
-    from agent_jail.exec_shim import exec_shim_main
+    from agent_vigilante.exec_shim import exec_shim_main
 
     raw = list(args.args or [])
     if raw and raw[0] == "--":
@@ -314,27 +314,27 @@ def cmd_exec_shim(args: argparse.Namespace) -> int:
 
 
 def cmd_wrap(args: argparse.Namespace) -> int:
-    from agent_jail.wrap import daemon_healthy, prepare_wrap
+    from agent_vigilante.wrap import daemon_healthy, prepare_wrap
 
     target_argv = list(args.argv or [])
     if target_argv and target_argv[0] == "--":
         target_argv = target_argv[1:]
     if not target_argv:
-        print("usage: agentjail wrap [--url URL] [--] <command> [args...]", file=sys.stderr)
+        print("usage: agentvigilante wrap [--url URL] [--] <command> [args...]", file=sys.stderr)
         return 2
 
     url = args.url
     if not daemon_healthy(url):
         print(
-            f"WARNING: AgentJail daemon not reachable at {url}. "
-            "Start it with: agentjail start",
+            f"WARNING: AgentVigilante daemon not reachable at {url}. "
+            "Start it with: agentvigilante start",
             file=sys.stderr,
         )
 
     root = Path(args.root).expanduser() if getattr(args, "root", None) else None
     target, env = prepare_wrap(target_argv, url=url, root=root, install=True)
     print(
-        f"AgentJail active: intercepting PATH lookups for {target[0]}...",
+        f"AgentVigilante active: intercepting PATH lookups for {target[0]}...",
         flush=True,
     )
     try:
@@ -347,16 +347,16 @@ def cmd_wrap(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="agentjail",
-        description="AgentJail — holographic containment runtime for AI agents",
+        prog="agentvigilante",
+        description="AgentVigilante — holographic containment runtime for AI agents",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     init_p = sub.add_parser("init", help="Auto-patch Claude / Cursor / Windsurf MCP configs")
     init_p.add_argument(
         "--url",
-        default=DEFAULT_AGENTJAIL_URL,
-        help=f"AgentJail base URL (default: {DEFAULT_AGENTJAIL_URL})",
+        default=DEFAULT_AGENTVIGILANTE_URL,
+        help=f"AgentVigilante base URL (default: {DEFAULT_AGENTVIGILANTE_URL})",
     )
     init_p.add_argument(
         "--project",
@@ -378,23 +378,23 @@ def build_parser() -> argparse.ArgumentParser:
     setup_p = sub.add_parser("setup", help="Build the sandbox Docker image")
     setup_p.add_argument(
         "--image",
-        default="agentjail-sandbox:local",
+        default="agentvigilante-sandbox:local",
         help="Image tag to build",
     )
     setup_p.set_defaults(func=cmd_setup)
 
-    start_p = sub.add_parser("start", help="Boot the AgentJail control panel")
+    start_p = sub.add_parser("start", help="Boot the AgentVigilante control panel")
     _add_start_flags(start_p)
     start_p.set_defaults(func=cmd_start)
 
     shim_p = sub.add_parser(
         "shim-install",
-        help="Install PATH shims under ~/.agentjail/shims",
+        help="Install PATH shims under ~/.agentvigilante/shims",
     )
     shim_p.add_argument(
         "--root",
         default=None,
-        help="Override AgentJail home (default: ~/.agentjail)",
+        help="Override AgentVigilante home (default: ~/.agentvigilante)",
     )
     shim_p.set_defaults(func=cmd_shim_install)
 
@@ -411,8 +411,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     exec_p.add_argument(
         "--url",
-        default=DEFAULT_AGENTJAIL_URL,
-        help=f"AgentJail base URL (default: {DEFAULT_AGENTJAIL_URL})",
+        default=DEFAULT_AGENTVIGILANTE_URL,
+        help=f"AgentVigilante base URL (default: {DEFAULT_AGENTVIGILANTE_URL})",
     )
     exec_p.add_argument(
         "args",
@@ -423,17 +423,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     wrap_p = sub.add_parser(
         "wrap",
-        help="Launch a CLI/IDE with AgentJail PATH shims prepended",
+        help="Launch a CLI/IDE with AgentVigilante PATH shims prepended",
     )
     wrap_p.add_argument(
         "--url",
-        default=DEFAULT_AGENTJAIL_URL,
-        help=f"AgentJail base URL (default: {DEFAULT_AGENTJAIL_URL})",
+        default=DEFAULT_AGENTVIGILANTE_URL,
+        help=f"AgentVigilante base URL (default: {DEFAULT_AGENTVIGILANTE_URL})",
     )
     wrap_p.add_argument(
         "--root",
         default=None,
-        help="Override AgentJail home (default: ~/.agentjail)",
+        help="Override AgentVigilante home (default: ~/.agentvigilante)",
     )
     wrap_p.add_argument(
         "argv",
@@ -448,11 +448,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     inv_sub = inv_p.add_subparsers(dest="invisible_action", required=True)
     inv_en = inv_sub.add_parser("enable", help="Enable invisible background mode")
-    inv_en.add_argument("--url", default=DEFAULT_AGENTJAIL_URL)
+    inv_en.add_argument("--url", default=DEFAULT_AGENTVIGILANTE_URL)
     inv_en.add_argument(
         "--root",
         default=None,
-        help="Override AgentJail home (default: ~/.agentjail)",
+        help="Override AgentVigilante home (default: ~/.agentvigilante)",
     )
     inv_en.add_argument(
         "--no-service",
@@ -467,7 +467,7 @@ def build_parser() -> argparse.ArgumentParser:
     inv_st.add_argument("--root", default=None)
     inv_st.set_defaults(func=cmd_invisible_status)
 
-    svc_p = sub.add_parser("service", help="Manage the background AgentJail daemon")
+    svc_p = sub.add_parser("service", help="Manage the background AgentVigilante daemon")
     svc_sub = svc_p.add_subparsers(dest="service_action", required=True)
     for name, help_text, func_name in (
         ("install", "Install and start launchd/systemd unit", "cmd_service_install"),
@@ -484,21 +484,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def cmd_invisible_enable(args: argparse.Namespace) -> int:
-    from agent_jail.config import (
+    from agent_vigilante.config import (
         apply_invisible_defaults,
         load_config,
         save_config,
     )
-    from agent_jail.service import install_service
-    from agent_jail.shell_integration import enable_shell_integration
-    from agent_jail.shim import install_shims, shim_dir
+    from agent_vigilante.service import install_service
+    from agent_vigilante.shell_integration import enable_shell_integration
+    from agent_vigilante.shim import install_shims, shim_dir
 
     root = Path(args.root).expanduser() if args.root else None
     cfg = apply_invisible_defaults(load_config(root))
     cfg.url = args.url.rstrip("/")
     cfg.python_executable = str(Path(sys.executable).resolve())
     if not cfg.workdir:
-        base = root if root is not None else Path.home() / ".agentjail"
+        base = root if root is not None else Path.home() / ".agentvigilante"
         cfg.workdir = str(base / "workspace")
     if args.no_service:
         cfg.service = False
@@ -543,13 +543,13 @@ def cmd_invisible_enable(args: argparse.Namespace) -> int:
 
 
 def cmd_invisible_disable(args: argparse.Namespace) -> int:
-    from agent_jail.config import (
+    from agent_vigilante.config import (
         apply_interactive_defaults,
         load_config,
         save_config,
     )
-    from agent_jail.service import uninstall_service
-    from agent_jail.shell_integration import disable_shell_integration
+    from agent_vigilante.service import uninstall_service
+    from agent_vigilante.shell_integration import disable_shell_integration
 
     root = Path(args.root).expanduser() if args.root else None
     cfg = apply_interactive_defaults(load_config(root))
@@ -570,8 +570,8 @@ def cmd_invisible_disable(args: argparse.Namespace) -> int:
 
 
 def cmd_invisible_status(args: argparse.Namespace) -> int:
-    from agent_jail.config import load_config
-    from agent_jail.service import service_status
+    from agent_vigilante.config import load_config
+    from agent_vigilante.service import service_status
 
     root = Path(args.root).expanduser() if args.root else None
     cfg = load_config(root)
@@ -581,8 +581,8 @@ def cmd_invisible_status(args: argparse.Namespace) -> int:
 
 
 def cmd_service_install(args: argparse.Namespace) -> int:
-    from agent_jail.config import load_config, save_config
-    from agent_jail.service import install_service
+    from agent_vigilante.config import load_config, save_config
+    from agent_vigilante.service import install_service
 
     root = Path(args.root).expanduser() if args.root else None
     cfg = load_config(root)
@@ -590,7 +590,7 @@ def cmd_service_install(args: argparse.Namespace) -> int:
     if not cfg.python_executable:
         cfg.python_executable = str(Path(sys.executable).resolve())
     if not cfg.workdir:
-        cfg.workdir = str((root or Path.home() / ".agentjail") / "workspace")
+        cfg.workdir = str((root or Path.home() / ".agentvigilante") / "workspace")
     save_config(cfg, root)
     summary = install_service(
         python=cfg.python_executable,
@@ -603,8 +603,8 @@ def cmd_service_install(args: argparse.Namespace) -> int:
 
 
 def cmd_service_uninstall(args: argparse.Namespace) -> int:
-    from agent_jail.config import load_config, save_config
-    from agent_jail.service import uninstall_service
+    from agent_vigilante.config import load_config, save_config
+    from agent_vigilante.service import uninstall_service
 
     root = Path(args.root).expanduser() if args.root else None
     cfg = load_config(root)
@@ -615,7 +615,7 @@ def cmd_service_uninstall(args: argparse.Namespace) -> int:
 
 
 def cmd_service_status(args: argparse.Namespace) -> int:
-    from agent_jail.service import service_status
+    from agent_vigilante.service import service_status
 
     root = Path(args.root).expanduser() if args.root else None
     print(json.dumps(service_status(home=root if root else None), indent=2))
@@ -623,7 +623,7 @@ def cmd_service_status(args: argparse.Namespace) -> int:
 
 
 def cmd_service_start(args: argparse.Namespace) -> int:
-    from agent_jail.service import install_service, launchd_plist_path, service_status
+    from agent_vigilante.service import install_service, launchd_plist_path, service_status
     import platform as _platform
 
     root = Path(args.root).expanduser() if args.root else None
@@ -635,7 +635,7 @@ def cmd_service_start(args: argparse.Namespace) -> int:
         subprocess.run(["launchctl", "load", str(path)], check=False)
     elif _platform.system() == "Linux":
         subprocess.run(
-            ["systemctl", "--user", "start", "agentjail.service"],
+            ["systemctl", "--user", "start", "agentvigilante.service"],
             check=False,
         )
     print(json.dumps(service_status(home=root if root else None), indent=2))
@@ -643,7 +643,7 @@ def cmd_service_start(args: argparse.Namespace) -> int:
 
 
 def cmd_service_stop(args: argparse.Namespace) -> int:
-    from agent_jail.service import launchd_plist_path, service_status
+    from agent_vigilante.service import launchd_plist_path, service_status
     import platform as _platform
 
     root = Path(args.root).expanduser() if args.root else None
@@ -653,7 +653,7 @@ def cmd_service_stop(args: argparse.Namespace) -> int:
             subprocess.run(["launchctl", "unload", str(path)], check=False)
     elif _platform.system() == "Linux":
         subprocess.run(
-            ["systemctl", "--user", "stop", "agentjail.service"],
+            ["systemctl", "--user", "stop", "agentvigilante.service"],
             check=False,
         )
     print(json.dumps(service_status(home=root if root else None), indent=2))
@@ -669,7 +669,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def start_main(argv: list[str] | None = None) -> int:
     """Backward-compatible entry used by ``run.py`` (start only)."""
-    parser = argparse.ArgumentParser(description="Run the AgentJail local sandboxing proxy")
+    parser = argparse.ArgumentParser(description="Run the AgentVigilante local sandboxing proxy")
     _add_start_flags(parser)
     args = parser.parse_args(argv)
     return cmd_start(args)

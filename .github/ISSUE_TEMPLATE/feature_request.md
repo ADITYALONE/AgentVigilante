@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest a capability for AgentJail
+about: Suggest a capability for AgentVigilante
 labels: enhancement
 ---
 

@@ -1,4 +1,4 @@
-"""Tests for agentjail wrap env composition."""
+"""Tests for agentvigilante wrap env composition."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agent_jail.shim import install_shims
-from agent_jail.wrap import build_wrap_env, prepare_wrap, resolve_wrap_target
+from agent_vigilante.shim import install_shims
+from agent_vigilante.wrap import build_wrap_env, prepare_wrap, resolve_wrap_target
 
 
 class WrapEnvTests(unittest.TestCase):
@@ -26,13 +26,13 @@ class WrapEnvTests(unittest.TestCase):
                 install_shims(root)
                 env = build_wrap_env(
                     url="http://127.0.0.1:8420",
-                    base_env={"PATH": "/usr/bin", "AGENTJAIL_BYPASS": "1", "HOME": tmp},
+                    base_env={"PATH": "/usr/bin", "AGENTVIGILANTE_BYPASS": "1", "HOME": tmp},
                     root=root,
                 )
             self.assertTrue(env["PATH"].startswith(str(root / "shims")))
-            self.assertEqual(env["AGENTJAIL_ACTIVE"], "1")
-            self.assertEqual(env["AGENTJAIL_URL"], "http://127.0.0.1:8420")
-            self.assertNotIn("AGENTJAIL_BYPASS", env)
+            self.assertEqual(env["AGENTVIGILANTE_ACTIVE"], "1")
+            self.assertEqual(env["AGENTVIGILANTE_URL"], "http://127.0.0.1:8420")
+            self.assertNotIn("AGENTVIGILANTE_BYPASS", env)
             self.assertTrue(env["SHELL"].endswith("/zsh") or env["SHELL"].endswith("/bash"))
 
     def test_prepare_wrap_installs_and_resolves(self) -> None:
@@ -59,9 +59,9 @@ class WrapEnvTests(unittest.TestCase):
             fake_cursor = Path(tmp) / "Cursor"
             fake_cursor.write_text("x", encoding="utf-8")
             fake_cursor.chmod(0o755)
-            with mock.patch("agent_jail.wrap.platform.system", return_value="Darwin"):
+            with mock.patch("agent_vigilante.wrap.platform.system", return_value="Darwin"):
                 with mock.patch.dict(
-                    "agent_jail.wrap._MAC_APP_BINARIES",
+                    "agent_vigilante.wrap._MAC_APP_BINARIES",
                     {"cursor": (str(fake_cursor),)},
                     clear=False,
                 ):

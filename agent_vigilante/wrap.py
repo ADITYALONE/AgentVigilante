@@ -1,4 +1,4 @@
-"""``agentjail wrap`` — launch a process with PATH shims prepended."""
+"""``agentvigilante wrap`` — launch a process with PATH shims prepended."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from typing import Mapping, Sequence
 
 import httpx
 
-from agent_jail.shim import install_shims, shim_dir
+from agent_vigilante.shim import install_shims, shim_dir
 
-DEFAULT_AGENTJAIL_URL = "http://127.0.0.1:8420"
+DEFAULT_AGENTVIGILANTE_URL = "http://127.0.0.1:8420"
 
 _MAC_APP_BINARIES: dict[str, tuple[str, ...]] = {
     "cursor": (
@@ -29,7 +29,7 @@ _MAC_APP_BINARIES: dict[str, tuple[str, ...]] = {
 }
 
 
-def daemon_healthy(url: str = DEFAULT_AGENTJAIL_URL) -> bool:
+def daemon_healthy(url: str = DEFAULT_AGENTVIGILANTE_URL) -> bool:
     base = url.rstrip("/")
     try:
         resp = httpx.get(f"{base}/health", timeout=2.0)
@@ -40,18 +40,18 @@ def daemon_healthy(url: str = DEFAULT_AGENTJAIL_URL) -> bool:
 
 def build_wrap_env(
     *,
-    url: str = DEFAULT_AGENTJAIL_URL,
+    url: str = DEFAULT_AGENTVIGILANTE_URL,
     base_env: Mapping[str, str] | None = None,
     root: Path | None = None,
 ) -> dict[str, str]:
-    """Compose env with shims on PATH and AgentJail markers set."""
+    """Compose env with shims on PATH and AgentVigilante markers set."""
     env: dict[str, str] = dict(base_env if base_env is not None else os.environ)
     shims = str(shim_dir(root))
     old_path = env.get("PATH", "")
     env["PATH"] = f"{shims}{os.pathsep}{old_path}" if old_path else shims
-    env["AGENTJAIL_ACTIVE"] = "1"
-    env["AGENTJAIL_URL"] = url.rstrip("/")
-    env.pop("AGENTJAIL_BYPASS", None)
+    env["AGENTVIGILANTE_ACTIVE"] = "1"
+    env["AGENTVIGILANTE_URL"] = url.rstrip("/")
+    env.pop("AGENTVIGILANTE_BYPASS", None)
 
     preferred_shell = None
     for name in ("zsh", "bash", "sh"):
@@ -61,7 +61,7 @@ def build_wrap_env(
             break
     if preferred_shell:
         env["SHELL"] = preferred_shell
-        env["AGENTJAIL_SHELL"] = preferred_shell
+        env["AGENTVIGILANTE_SHELL"] = preferred_shell
     return env
 
 
@@ -92,7 +92,7 @@ def resolve_wrap_target(argv: Sequence[str]) -> list[str]:
 def prepare_wrap(
     argv: Sequence[str],
     *,
-    url: str = DEFAULT_AGENTJAIL_URL,
+    url: str = DEFAULT_AGENTVIGILANTE_URL,
     root: Path | None = None,
     base_env: Mapping[str, str] | None = None,
     install: bool = True,

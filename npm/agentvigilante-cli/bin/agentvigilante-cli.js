@@ -10,7 +10,7 @@ const candidates = process.platform === "win32"
 
 let lastError = null;
 for (const bin of candidates) {
-  const result = spawnSync(bin, ["-m", "agent_jail.cli", ...args], {
+  const result = spawnSync(bin, ["-m", "agent_vigilante.cli", ...args], {
     stdio: "inherit",
     env: process.env,
   });
@@ -27,14 +27,14 @@ for (const bin of candidates) {
   // Non-ENOENT: Python ran; forward exit code (e.g. bad args or missing package)
   if (result.status !== null && result.status !== undefined) {
     if (result.status !== 0) {
-      const probe = spawnSync(bin, ["-c", "import agent_jail.cli"], {
+      const probe = spawnSync(bin, ["-c", "import agent_vigilante.cli"], {
         encoding: "utf8",
       });
       if (probe.status !== 0) {
         console.error(
-          "AgentJail Python package not found.\n" +
+          "AgentVigilante Python package not found.\n" +
             "Install it first:\n" +
-            "  pip install agentjail\n" +
+            "  pip install agentvigilante\n" +
             "  # or from a checkout: pip install -e .\n",
         );
       }
@@ -47,7 +47,7 @@ for (const bin of candidates) {
 console.error(
   "Could not find a Python interpreter (tried: " +
     candidates.join(", ") +
-    ").\nInstall Python 3.11+ and: pip install agentjail",
+    ").\nInstall Python 3.11+ and: pip install agentvigilante",
 );
 if (lastError) {
   console.error(String(lastError));

@@ -1,4 +1,4 @@
-"""PATH shim install — ``~/.agentjail/shims`` + real binary map."""
+"""PATH shim install — ``~/.agentvigilante/shims`` + real binary map."""
 
 from __future__ import annotations
 
@@ -28,28 +28,28 @@ SHIM_NAMES: tuple[str, ...] = (
     "git",
 )
 
-DEFAULT_AGENTJAIL_HOME = Path.home() / ".agentjail"
+DEFAULT_AGENTVIGILANTE_HOME = Path.home() / ".agentvigilante"
 
 
-def agentjail_home(root: Path | None = None) -> Path:
-    return Path(root) if root is not None else DEFAULT_AGENTJAIL_HOME
+def agentvigilante_home(root: Path | None = None) -> Path:
+    return Path(root) if root is not None else DEFAULT_AGENTVIGILANTE_HOME
 
 
 def shim_dir(root: Path | None = None) -> Path:
-    return agentjail_home(root) / "shims"
+    return agentvigilante_home(root) / "shims"
 
 
 def real_bins_path(root: Path | None = None) -> Path:
-    return agentjail_home(root) / "real_bins.json"
+    return agentvigilante_home(root) / "real_bins.json"
 
 
 def _shell_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
-def agentjail_argv() -> list[str]:
-    """Absolute interpreter + ``-m agent_jail`` so shimmed python cannot recurse."""
-    return [str(Path(sys.executable).resolve()), "-m", "agent_jail"]
+def agentvigilante_argv() -> list[str]:
+    """Absolute interpreter + ``-m agent_vigilante`` so shimmed python cannot recurse."""
+    return [str(Path(sys.executable).resolve()), "-m", "agent_vigilante"]
 
 
 def resolve_real_bin(name: str, *, skip_dir: Path | None = None) -> Path | None:
@@ -103,23 +103,23 @@ def resolve_real_bin(name: str, *, skip_dir: Path | None = None) -> Path | None:
     return None
 
 
-def _shim_script(*, name: str, real_bin: str, agentjail_py: str) -> str:
+def _shim_script(*, name: str, real_bin: str, agentvigilante_py: str) -> str:
     real_q = _shell_quote(real_bin)
-    py_q = _shell_quote(agentjail_py)
+    py_q = _shell_quote(agentvigilante_py)
     name_q = _shell_quote(name)
     return f"""#!/bin/sh
-# AgentJail PATH shim for {name}
-# Generated — do not edit; re-run: agentjail shim-install
-if [ -n "${{AGENTJAIL_BYPASS}}" ]; then
+# AgentVigilante PATH shim for {name}
+# Generated — do not edit; re-run: agentvigilante shim-install
+if [ -n "${{AGENTVIGILANTE_BYPASS}}" ]; then
   exec {real_q} "$@"
 fi
-exec {py_q} -m agent_jail exec-shim --bin {name_q} -- "$@"
+exec {py_q} -m agent_vigilante exec-shim --bin {name_q} -- "$@"
 """
 
 
 def install_shims(root: Path | None = None) -> dict[str, Any]:
     """Create shim scripts and ``real_bins.json``. Returns a summary dict."""
-    home = agentjail_home(root)
+    home = agentvigilante_home(root)
     shims = shim_dir(root)
     home.mkdir(parents=True, exist_ok=True)
     shims.mkdir(parents=True, exist_ok=True)
@@ -146,15 +146,15 @@ def install_shims(root: Path | None = None) -> dict[str, Any]:
         real_map[name] = real_s
         script_path = shims / name
         script_path.write_text(
-            _shim_script(name=name, real_bin=real_s, agentjail_py=py),
+            _shim_script(name=name, real_bin=real_s, agentvigilante_py=py),
             encoding="utf-8",
         )
         script_path.chmod(0o755)
         written.append(name)
 
     meta = {
-        "agentjail_python": py,
-        "agentjail_argv": agentjail_argv(),
+        "agentvigilante_python": py,
+        "agentvigilante_argv": agentvigilante_argv(),
         "bins": real_map,
         "written": written,
         "skipped": skipped,

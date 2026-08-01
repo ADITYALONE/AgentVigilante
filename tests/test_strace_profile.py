@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from agent_jail.core.strace_profile import parse_strace_c
+from agent_vigilante.core.strace_profile import parse_strace_c
 
 SAMPLE = """
 % time     seconds  usecs/call     calls    errors syscall

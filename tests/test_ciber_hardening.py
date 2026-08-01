@@ -1,4 +1,4 @@
-"""CIBER / red-team regression checks for AgentJail hardening."""
+"""CIBER / red-team regression checks for AgentVigilante hardening."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from agent_jail.core.command_analyzer import CommandAnalyzer, RiskLevel
-from agent_jail.core.egress_proxy import DEFAULT_WHITELIST, WhitelistProxy
-from agent_jail.core.path_guard import find_symlink_paths
+from agent_vigilante.core.command_analyzer import CommandAnalyzer, RiskLevel
+from agent_vigilante.core.egress_proxy import DEFAULT_WHITELIST, WhitelistProxy
+from agent_vigilante.core.path_guard import find_symlink_paths
 
 
 def _docker_daemon_available() -> bool:
@@ -116,10 +116,10 @@ class IsolationHardeningUnitTests(unittest.TestCase):
     def test_run_kwargs_include_pids_and_dns_blackhole(self) -> None:
         from docker.types import Ulimit
 
-        from agent_jail.core.isolation import AgentSandbox
+        from agent_vigilante.core.isolation import AgentSandbox
 
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("agent_jail.core.isolation.docker.from_env") as from_env:
+            with mock.patch("agent_vigilante.core.isolation.docker.from_env") as from_env:
                 client = mock.MagicMock()
                 client.ping.return_value = True
                 from_env.return_value = client
@@ -144,10 +144,10 @@ class IsolationHardeningUnitTests(unittest.TestCase):
                 self.assertIn("nofile", names)
 
     def test_whitelist_extra_hosts_pins_ipv4(self) -> None:
-        from agent_jail.core.isolation import AgentSandbox
+        from agent_vigilante.core.isolation import AgentSandbox
 
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch("agent_jail.core.isolation.docker.from_env") as from_env:
+            with mock.patch("agent_vigilante.core.isolation.docker.from_env") as from_env:
                 client = mock.MagicMock()
                 client.ping.return_value = True
                 from_env.return_value = client
@@ -163,7 +163,7 @@ class IsolationHardeningUnitTests(unittest.TestCase):
                 )
             ]
             with mock.patch(
-                "agent_jail.core.isolation.socket.getaddrinfo",
+                "agent_vigilante.core.isolation.socket.getaddrinfo",
                 return_value=fake,
             ):
                 hosts = sb._whitelist_extra_hosts()
@@ -173,7 +173,7 @@ class IsolationHardeningUnitTests(unittest.TestCase):
 @unittest.skipUnless(_docker_daemon_available(), "Docker daemon not available")
 class DockerIntegrationScenarioTests(unittest.TestCase):
     def test_s2_pids_limit_applied_on_container(self) -> None:
-        from agent_jail.core.isolation import AgentSandbox
+        from agent_vigilante.core.isolation import AgentSandbox
 
         with tempfile.TemporaryDirectory() as tmp:
             sb = AgentSandbox(
@@ -192,7 +192,7 @@ class DockerIntegrationScenarioTests(unittest.TestCase):
                 sb._force_cleanup(container)
 
     def test_s4_symlink_does_not_escape_to_host_secret(self) -> None:
-        from agent_jail.core.isolation import AgentSandbox
+        from agent_vigilante.core.isolation import AgentSandbox
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -203,7 +203,7 @@ class DockerIntegrationScenarioTests(unittest.TestCase):
                 enable_strace=False,
             )
             result = sb.execute_command("cat escape.txt", timeout=15)
-            self.assertNotIn("AGENTJAIL_HOST_SECRET_MARKER", result["stdout"])
+            self.assertNotIn("AGENTVIGILANTE_HOST_SECRET_MARKER", result["stdout"])
 
 
 if __name__ == "__main__":

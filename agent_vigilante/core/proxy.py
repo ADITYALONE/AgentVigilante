@@ -15,18 +15,18 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
-from agent_jail.core.checkpoint import (
+from agent_vigilante.core.checkpoint import (
     CheckpointError,
     create_checkpoint,
     restore_checkpoint,
 )
-from agent_jail.core.command_analyzer import CommandAnalyzer, RiskLevel
-from agent_jail.core.diff_engine import DiffEngine, DiffResult
-from agent_jail.core.egress_proxy import EgressEvent, WhitelistProxy
-from agent_jail.core.hologram import create_shadow, destroy_shadow, promote_shadow
-from agent_jail.core.isolation import AgentSandbox
-from agent_jail.core.path_guard import find_symlink_paths
-from agent_jail.core.strace_profile import (
+from agent_vigilante.core.command_analyzer import CommandAnalyzer, RiskLevel
+from agent_vigilante.core.diff_engine import DiffEngine, DiffResult
+from agent_vigilante.core.egress_proxy import EgressEvent, WhitelistProxy
+from agent_vigilante.core.hologram import create_shadow, destroy_shadow, promote_shadow
+from agent_vigilante.core.isolation import AgentSandbox
+from agent_vigilante.core.path_guard import find_symlink_paths
+from agent_vigilante.core.strace_profile import (
     KernelEvent,
     SyscallStat,
     counts_from_events,
@@ -317,8 +317,8 @@ def _load_kernel_telemetry(
     profile: list[SyscallStat] | None = None
 
     for root in roots:
-        trace = root / ".agentjail" / "strace" / f"{token}.trace"
-        summary = root / ".agentjail" / "strace" / f"{token}.txt"
+        trace = root / ".agentvigilante" / "strace" / f"{token}.trace"
+        summary = root / ".agentvigilante" / "strace" / f"{token}.txt"
         if trace.is_file() and events is None:
             try:
                 text = trace.read_text(encoding="utf-8", errors="replace")
@@ -582,7 +582,7 @@ def _symlink_guard(command: str) -> tuple[RiskLevel, str] | None:
 
 @router.post("/commands", response_model=Job)
 async def create_command(body: CommandCreate) -> Job:
-    from agent_jail.core.autopilot import autopilot_allows
+    from agent_vigilante.core.autopilot import autopilot_allows
 
     risk, reason = analyzer.analyze(body.command)
     logger.info(
@@ -659,7 +659,7 @@ async def create_command(body: CommandCreate) -> Job:
         },
     )
     try:
-        from agent_jail.notify import schedule_risky_notification
+        from agent_vigilante.notify import schedule_risky_notification
 
         schedule_risky_notification(job)
     except Exception:

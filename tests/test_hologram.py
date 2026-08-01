@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_jail.core.hologram import (
+from agent_vigilante.core.hologram import (
     create_shadow,
     destroy_shadow,
     promote_shadow,

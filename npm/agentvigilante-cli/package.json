@@ -1,0 +1,20 @@
+{
+  "name": "agentvigilante-cli",
+  "version": "0.3.0",
+  "description": "NPX wrapper for AgentVigilante (python -m agent_vigilante.cli)",
+  "bin": {
+    "agentvigilante-cli": "bin/agentvigilante-cli.js"
+  },
+  "files": [
+    "bin/"
+  ],
+  "keywords": [
+    "agentvigilante",
+    "mcp",
+    "ai-agents"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

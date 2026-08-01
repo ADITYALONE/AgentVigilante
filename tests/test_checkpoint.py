@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent_jail.core.checkpoint import (
+from agent_vigilante.core.checkpoint import (
     create_checkpoint,
     git_available,
     restore_checkpoint,

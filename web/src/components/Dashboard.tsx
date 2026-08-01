@@ -267,7 +267,7 @@ export function Dashboard() {
         <div className="flex flex-col gap-0.5">
           <div className="flex items-baseline gap-2">
             <span className="font-heading text-base font-semibold tracking-[0.18em] text-white">
-              AGENTJAIL
+              AGENTVIGILANTE
             </span>
             <Badge variant="outline" className="font-mono text-[10px] uppercase">
               containment

@@ -12,11 +12,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-SHADOW_ROOT_NAME = ".agentjail_shadow"
+SHADOW_ROOT_NAME = ".agentvigilante_shadow"
 
 SKIP_NAMES = {
     ".git",
-    ".agentjail",
+    ".agentvigilante",
     SHADOW_ROOT_NAME,
     "__pycache__",
     ".venv",
@@ -126,7 +126,7 @@ def destroy_shadow(shadow: Path | None) -> None:
         return
     shutil.rmtree(shadow, ignore_errors=True)
     logger.info("Hologram destroyed path=%s", shadow)
-    # Clean empty parent .agentjail_shadow
+    # Clean empty parent .agentvigilante_shadow
     parent = shadow.parent
     if parent.name == SHADOW_ROOT_NAME and parent.is_dir():
         try:
