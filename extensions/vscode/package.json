@@ -1,0 +1,40 @@
+{
+  "name": "agentjail",
+  "displayName": "AgentJail",
+  "description": "Invisible Security status bar — Approve/Block anomalies without leaving the IDE",
+  "version": "0.1.0",
+  "publisher": "agentjail",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentjail.openConsole",
+        "title": "AgentJail: Open Console"
+      },
+      {
+        "command": "agentjail.refresh",
+        "title": "AgentJail: Refresh Status"
+      }
+    ],
+    "configuration": {
+      "title": "AgentJail",
+      "properties": {
+        "agentjail.url": {
+          "type": "string",
+          "default": "http://127.0.0.1:8420",
+          "description": "AgentJail daemon base URL"
+        },
+        "agentjail.pollIntervalMs": {
+          "type": "number",
+          "default": 2000,
+          "description": "Status poll interval in milliseconds"
+        }
+      }
+    }
+  }
+}

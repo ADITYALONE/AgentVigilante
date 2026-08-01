@@ -1,0 +1,6 @@
+include agent_jail/dashboard/templates/*.html
+include README.md
+include requirements.txt
+include scripts/setup.sh
+include docker/Dockerfile.sandbox
+recursive-include tests *

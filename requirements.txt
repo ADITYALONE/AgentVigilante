@@ -1,0 +1,9 @@
+# Prefer: pip install -e .
+# Mirror of pyproject.toml runtime deps for bare pip installs:
+docker>=7.0.0
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+jinja2>=3.1.0
+httpx>=0.27.0
+bashlex>=0.18
+mcp[cli]>=1.0.0

@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }} — Containment Runtime</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.469.0"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ["Chakra Petch", "sans-serif"],
+            sans: ["IBM Plex Sans", "sans-serif"],
+            mono: ["IBM Plex Mono", "monospace"],
+          },
+          colors: {
+            hull: {
+              950: "#07080a",
+              900: "#0c0e12",
+              850: "#11151c",
+              800: "#1a2030",
+              700: "#2a3348",
+            },
+            signal: {
+              safe: "#3dffa8",
+              risk: "#ffc14a",
+              crit: "#ff4d6d",
+              net: "#8b7cff",
+              ice: "#7ec8ff",
+            },
+          },
+          keyframes: {
+            rise: {
+              "0%": { opacity: "0", transform: "translateY(8px)" },
+              "100%": { opacity: "1", transform: "translateY(0)" },
+            },
+            sweep: {
+              "0%": { transform: "translateX(-120%)" },
+              "100%": { transform: "translateX(220%)" },
+            },
+            pulseRing: {
+              "0%": { boxShadow: "0 0 0 0 rgba(255, 77, 109, 0.55)" },
+              "70%": { boxShadow: "0 0 0 12px rgba(255, 77, 109, 0)" },
+              "100%": { boxShadow: "0 0 0 0 rgba(255, 77, 109, 0)" },
+            },
+            flicker: {
+              "0%, 100%": { opacity: "1" },
+              "92%": { opacity: "1" },
+              "93%": { opacity: "0.55" },
+              "94%": { opacity: "1" },
+            },
+          },
+          animation: {
+            rise: "rise 0.45s ease-out both",
+            sweep: "sweep 2.8s ease-in-out infinite",
+            pulseRing: "pulseRing 1.8s ease-out infinite",
+            flicker: "flicker 5s linear infinite",
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root {
+      --bg: #07080a;
+      --panel: rgba(12, 14, 18, 0.72);
+      --line: rgba(126, 200, 255, 0.12);
+      --glow: rgba(61, 255, 168, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      font-family: "IBM Plex Sans", sans-serif;
+      color: #d7dde8;
+    }
+    .atmosphere {
+      background:
+        radial-gradient(ellipse 80% 50% at 12% -10%, rgba(61, 255, 168, 0.09), transparent 55%),
+        radial-gradient(ellipse 60% 40% at 90% 0%, rgba(139, 124, 255, 0.1), transparent 50%),
+        radial-gradient(ellipse 50% 30% at 70% 100%, rgba(255, 77, 109, 0.06), transparent 45%),
+        linear-gradient(180deg, #07080a 0%, #0a0c10 100%);
+    }
+    .grain::before {
+      content: "";
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    .glass {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--line);
+    }
+    .scanline {
+      position: relative;
+      overflow: hidden;
+    }
+    .scanline::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, transparent 0%, rgba(126, 200, 255, 0.04) 50%, transparent 100%);
+      background-size: 100% 8px;
+      opacity: 0.35;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2a3348; border-radius: 3px; }
+    .terminal-container .xterm-viewport { background-color: #050608 !important; }
+    .diff-add { color: #3dffa8; }
+    .diff-del { color: #ff4d6d; }
+    .diff-meta { color: #7ec8ff; }
+    .kbd {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid rgba(126, 200, 255, 0.2);
+      background: rgba(126, 200, 255, 0.06);
+      color: #9eb6d4;
+    }
+    .queue-item { animation: rise 0.4s ease-out both; }
+    .queue-item:nth-child(1) { animation-delay: 0.02s; }
+    .queue-item:nth-child(2) { animation-delay: 0.06s; }
+    .queue-item:nth-child(3) { animation-delay: 0.1s; }
+    .queue-item:nth-child(4) { animation-delay: 0.14s; }
+    .estop-armed { animation: pulseRing 1.8s ease-out infinite; }
+  </style>
+</head>
+<body class="atmosphere grain min-h-screen h-screen overflow-hidden antialiased selection:bg-signal-crit/20 selection:text-rose-200 flex flex-col">
+
+  <!-- TOP BAR -->
+  <header class="h-14 shrink-0 glass border-b border-white/5 px-4 flex items-center justify-between z-20 relative">
+    <div class="absolute inset-x-0 bottom-0 h-px overflow-hidden pointer-events-none">
+      <div class="h-full w-1/3 bg-gradient-to-r from-transparent via-signal-ice/50 to-transparent animate-sweep"></div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="relative p-1.5 rounded-md bg-signal-crit/10 border border-signal-crit/25 text-signal-crit animate-flicker">
+        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+        <span class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-signal-safe shadow-[0_0_8px_#3dffa8]"></span>
+      </div>
+      <div>
+        <div class="flex items-baseline gap-2">
+          <span class="font-display font-bold text-[15px] tracking-[0.14em] text-white">AGENTJAIL</span>
+          <span class="font-mono text-[10px] uppercase tracking-wider text-signal-ice/70 border border-signal-ice/20 px-1.5 py-0.5 rounded">containment · v0.2</span>
+        </div>
+        <div class="text-[10px] font-mono text-zinc-500 mt-0.5">autonomous agent security runtime</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2.5 text-xs font-mono">
+      <div class="hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-md glass">
+        <span class="relative flex h-2 w-2">
+          <span id="sandbox-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-signal-safe opacity-60"></span>
+          <span id="sandbox-dot" class="relative inline-flex rounded-full h-2 w-2 bg-signal-safe"></span>
+        </span>
+        <span class="text-zinc-500">sandbox</span>
+        <span id="sandbox-label" class="text-signal-safe font-semibold tracking-wide">CONTAINED</span>
+      </div>
+
+      <div class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md glass">
+        <span id="egress-dot" class="relative inline-flex rounded-full h-2 w-2 bg-signal-net"></span>
+        <span class="text-zinc-500">egress</span>
+        <span id="egress-label" class="text-signal-net font-semibold">:8888 WL</span>
+      </div>
+
+      <button type="button" onclick="triggerEStop()" class="estop-armed flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-signal-crit text-hull-950 font-display font-bold text-xs tracking-wide hover:brightness-110 transition active:scale-95 group">
+        <i data-lucide="octagon-x" class="w-4 h-4 group-hover:rotate-12 transition-transform"></i>
+        E-STOP
+        <span class="kbd !border-black/20 !bg-black/10 !text-hull-950">⇧ESC</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 flex overflow-hidden min-h-0">
+    <!-- LEFT -->
+    <section class="w-[19rem] xl:w-80 border-r border-white/5 glass flex flex-col shrink-0">
+      <div class="p-3 border-b border-white/5 flex items-center justify-between">
+        <span class="text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
+          <i data-lucide="list-filter" class="w-3.5 h-3.5 text-signal-risk"></i> Queue
+        </span>
+        <span id="queue-count" class="px-1.5 py-0.5 text-[10px] font-mono bg-signal-risk/10 text-signal-risk border border-signal-risk/25 rounded">0 pending</span>
+      </div>
+      <div id="queue-list" class="flex-1 overflow-y-auto p-2 space-y-2"></div>
+      <div class="p-3 border-t border-white/5 bg-black/20">
+        <div class="text-[10px] font-display uppercase tracking-[0.16em] text-zinc-500 mb-2 flex items-center gap-1.5">
+          <i data-lucide="activity" class="w-3 h-3 text-signal-ice"></i> Live
+        </div>
+        <div id="running-list" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- CENTER -->
+    <section class="flex-1 flex flex-col min-w-0 relative scanline">
+      <div class="h-11 border-b border-white/5 px-3 flex items-center justify-between bg-black/30 backdrop-blur-sm">
+        <div class="flex gap-1 p-0.5 rounded-md bg-hull-900 border border-white/5">
+          <button type="button" id="tab-term" onclick="switchTab('terminal')" class="tab-active px-3 py-1 text-xs font-medium rounded flex items-center gap-1.5">
+            <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Stream
+          </button>
+          <button type="button" id="tab-diff" onclick="switchTab('diff')" class="tab-idle px-3 py-1 text-xs font-medium rounded flex items-center gap-1.5">
+            <i data-lucide="file-diff" class="w-3.5 h-3.5"></i> Diff
+          </button>
+        </div>
+
+        <div id="approval-bar" class="hidden items-center gap-2">
+          <span class="text-[11px] text-signal-risk font-mono flex items-center gap-1.5">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i> authorization required
+          </span>
+          <button type="button" onclick="approveCurrentJob()" class="px-3 py-1 bg-signal-safe text-hull-950 text-xs font-display font-bold rounded hover:brightness-110 transition flex items-center gap-1">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i> Approve <span class="kbd !text-hull-950 !border-black/15 !bg-black/10">A</span>
+          </button>
+          <button type="button" onclick="denyCurrentJob()" class="px-3 py-1 glass text-zinc-300 text-xs font-semibold rounded hover:border-signal-crit/40 hover:text-signal-crit transition flex items-center gap-1">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i> Deny <span class="kbd">D</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="view-terminal" class="flex-1 p-2 flex flex-col min-h-0">
+        <div class="px-2 pb-1.5 flex items-center justify-between text-[10px] font-mono text-zinc-500">
+          <span id="term-job" class="truncate">standby · no active stream</span>
+          <button type="button" id="kill-btn" onclick="killWatchedJob()" class="hidden px-2 py-0.5 rounded border border-signal-crit/40 text-signal-crit hover:bg-signal-crit/10">Kill</button>
+        </div>
+        <div id="terminal" class="flex-1 rounded-lg border border-signal-ice/15 overflow-hidden terminal-container shadow-[inset_0_0_40px_rgba(0,0,0,0.55)]"></div>
+      </div>
+
+      <div id="view-diff" class="flex-1 p-4 overflow-y-auto hidden font-mono text-xs">
+        <div id="diff-content" class="rounded-lg border border-white/5 bg-black/40 p-4 space-y-4">
+          <p class="text-zinc-500 italic">No filesystem mutations recorded for this turn.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <section class="w-[19rem] xl:w-80 border-l border-white/5 glass flex flex-col shrink-0">
+      <div class="p-3 border-b border-white/5 flex items-center justify-between">
+        <span class="text-[10px] font-display font-semibold uppercase tracking-[0.16em] text-zinc-400 flex items-center gap-1.5">
+          <i data-lucide="globe" class="w-3.5 h-3.5 text-signal-net"></i> Egress
+        </span>
+        <span class="text-[10px] font-mono text-zinc-500">CONNECT</span>
+      </div>
+      <div id="egress-list" class="flex-1 overflow-y-auto p-2 space-y-1.5 font-mono text-[11px]"></div>
+      <div class="p-3 border-t border-white/5 bg-black/20">
+        <div class="text-[10px] font-display uppercase tracking-[0.16em] text-zinc-500 mb-2">Recent</div>
+        <div id="recent-list" class="space-y-1.5 max-h-44 overflow-y-auto font-mono text-[10px]"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="h-8 shrink-0 border-t border-white/5 bg-black/40 px-4 flex items-center justify-between text-[10px] font-mono text-zinc-500">
+    <div class="flex items-center gap-3">
+      <span>hotkeys</span>
+      <span><span class="kbd">A</span> approve</span>
+      <span><span class="kbd">D</span> deny</span>
+      <span><span class="kbd">⇧ESC</span> e-stop</span>
+    </div>
+    <div id="footer-clock" class="text-signal-ice/60"></div>
+  </footer>
+
+  <style>
+    .tab-active { background: #1a2030; color: #fff; }
+    .tab-idle { color: #8b95a8; }
+    .tab-idle:hover { color: #fff; }
+    #approval-bar.flex { display: flex !important; }
+  </style>
+
+  <script>
+    lucide.createIcons();
+
+    const term = new Terminal({
+      theme: {
+        background: "#050608",
+        foreground: "#d7dde8",
+        cursor: "#3dffa8",
+        cursorAccent: "#050608",
+        black: "#11151c",
+        red: "#ff4d6d",
+        green: "#3dffa8",
+        yellow: "#ffc14a",
+        blue: "#7ec8ff",
+        magenta: "#8b7cff",
+        cyan: "#5ce1e6",
+        white: "#e8eef7",
+      },
+      fontFamily: "IBM Plex Mono, monospace",
+      fontSize: 12,
+      lineHeight: 1.45,
+      cursorBlink: true,
+      convertEol: true,
+    });
+
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById("terminal"));
+    fitAddon.fit();
+
+    term.writeln("\x1b[38;2;126;200;255m[SYSTEM]\x1b[0m AgentJail containment gateway online.");
+    term.writeln("\x1b[38;2;126;200;255m[SYSTEM]\x1b[0m Isolation: ephemeral Docker · non-root · 128MB · CPU quota");
+    term.writeln("\x1b[38;2;139;124;255m[EGRESS]\x1b[0m Whitelist CONNECT proxy → host.docker.internal:8888");
+    term.writeln("");
+
+    window.addEventListener("resize", () => fitAddon.fit());
+
+    let activeJobId = null;
+    let watchingId = null;
+    let activeWs = null;
+    let lastFsDiff = null;
+    let egressFailStreak = 0;
+
+    function tickClock() {
+      document.getElementById("footer-clock").textContent =
+        new Date().toISOString().replace("T", " ").slice(0, 19) + "Z";
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    function esc(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function isEditableFocus() {
+      const el = document.activeElement;
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+    }
+
+    function riskBadge(level) {
+      const l = (level || "RISKY").toUpperCase();
+      if (l === "CRITICAL") return "bg-signal-crit/15 text-signal-crit border border-signal-crit/30";
+      if (l === "SAFE") return "bg-signal-safe/15 text-signal-safe border border-signal-safe/30";
+      return "bg-signal-risk/15 text-signal-risk border border-signal-risk/30";
+    }
+
+    function statusClass(status) {
+      const map = {
+        pending: "text-signal-risk",
+        running: "text-signal-ice",
+        completed: "text-signal-safe",
+        failed: "text-signal-crit",
+        denied: "text-signal-crit",
+        blocked: "text-signal-crit",
+        killed: "text-signal-crit",
+      };
+      return map[status] || "text-zinc-400";
+    }
+
+    function switchTab(tab) {
+      const termView = document.getElementById("view-terminal");
+      const diffView = document.getElementById("view-diff");
+      const tabTerm = document.getElementById("tab-term");
+      const tabDiff = document.getElementById("tab-diff");
+
+      if (tab === "terminal") {
+        termView.classList.remove("hidden");
+        diffView.classList.add("hidden");
+        tabTerm.className = "tab-active px-3 py-1 text-xs font-medium rounded flex items-center gap-1.5";
+        tabDiff.className = "tab-idle px-3 py-1 text-xs font-medium rounded flex items-center gap-1.5";
+        fitAddon.fit();
+      } else {
+        termView.classList.add("hidden");
+        diffView.classList.remove("hidden");
+        tabDiff.className = "tab-active px-3 py-1 text-xs font-medium rounded flex items-center gap-1.5";
+        tabTerm.className = "tab-idle px-3 py-1 text-xs font-medium rounded flex items-center gap-1.5";
+        renderDiff(lastFsDiff);
+      }
+      lucide.createIcons();
+    }
+
+    function renderDiff(fs) {
+      const el = document.getElementById("diff-content");
+      if (!fs) {
+        el.innerHTML = `<p class="text-zinc-500 italic">No filesystem mutations recorded for this turn.</p>`;
+        return;
+      }
+      const added = fs.added || [];
+      const modified = fs.modified || [];
+      const deleted = fs.deleted || [];
+      if (!added.length && !modified.length && !deleted.length) {
+        el.innerHTML = `<p class="text-zinc-500 italic">No filesystem mutations recorded for this turn.</p>`;
+        return;
+      }
+
+      const blocks = [];
+      const section = (title, items, color) => {
+        if (!items.length) return;
+        blocks.push(`<div class="text-[10px] font-display uppercase tracking-[0.14em] ${color} mb-1">${title} (${items.length})</div>`);
+        for (const item of items) {
+          const path = esc(item.path);
+          const patch = item.unified_diff
+            ? formatUnifiedDiff(item.unified_diff)
+            : item.binary_or_large
+              ? `<div class="text-zinc-500">binary or large file</div>`
+              : `<div class="text-zinc-500">no patch</div>`;
+          blocks.push(`
+            <div class="rounded-md border border-white/5 bg-hull-900/60 overflow-hidden mb-3">
+              <div class="px-3 py-1.5 border-b border-white/5 text-signal-ice/80">${path}</div>
+              <pre class="p-3 overflow-x-auto whitespace-pre-wrap leading-relaxed">${patch}</pre>
+            </div>
+          `);
+        }
+      };
+
+      section("Added", added, "text-signal-safe");
+      section("Modified", modified, "text-signal-risk");
+      section("Deleted", deleted, "text-signal-crit");
+      el.innerHTML = blocks.join("");
+    }
+
+    function formatUnifiedDiff(patch) {
+      return esc(patch)
+        .split("\n")
+        .map((line) => {
+          if (line.startsWith("+") && !line.startsWith("+++")) return `<span class="diff-add">${line}</span>`;
+          if (line.startsWith("-") && !line.startsWith("---")) return `<span class="diff-del">${line}</span>`;
+          if (line.startsWith("@@")) return `<span class="diff-meta">${line}</span>`;
+          return line;
+        })
+        .join("\n");
+    }
+
+    function watch(jobId, { clear = true } = {}) {
+      if (!jobId) return;
+      if (watchingId === jobId && activeWs && activeWs.readyState <= 1) return;
+
+      if (activeWs) {
+        try { activeWs.close(); } catch (_) {}
+        activeWs = null;
+      }
+      watchingId = jobId;
+      document.getElementById("term-job").textContent = `stream · ${jobId.slice(0, 8)}`;
+      document.getElementById("kill-btn").classList.remove("hidden");
+      if (clear) {
+        term.clear();
+        term.writeln(`\x1b[38;2;126;200;255m[ATTACH]\x1b[0m job ${jobId.slice(0, 8)}`);
+      }
+
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/v1/commands/${jobId}/stream`);
+      activeWs = ws;
+      ws.onmessage = (ev) => {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch { return; }
+        if (msg.type === "out" || msg.type === "meta") term.write(msg.data || "");
+        if (msg.type === "done") {
+          term.writeln(`\r\n\x1b[38;2;126;200;255m[DONE]\x1b[0m status=${msg.status} exit=${msg.exit_code}`);
+          document.getElementById("kill-btn").classList.add("hidden");
+          fetchJobDiff(jobId);
+          ws.close();
+        }
+      };
+      ws.onclose = () => {
+        if (activeWs === ws) activeWs = null;
+      };
+    }
+
+    async function fetchJobDiff(jobId) {
+      try {
+        const job = await fetch(`/v1/commands/${jobId}`).then((r) => r.json());
+        lastFsDiff = (job.result && job.result.fs_diff) || null;
+        if (!document.getElementById("view-diff").classList.contains("hidden")) {
+          renderDiff(lastFsDiff);
+        }
+      } catch (_) {}
+    }
+
+    async function approveCurrentJob() {
+      if (!activeJobId) return;
+      const id = activeJobId;
+      document.getElementById("approval-bar").classList.add("hidden");
+      document.getElementById("approval-bar").classList.remove("flex");
+      term.writeln("\r\n\x1b[32m✔ AUTHORIZED\x1b[0m\r\n");
+      try {
+        await fetch(`/v1/commands/${id}/approve`, { method: "POST" });
+        watch(id);
+      } finally {
+        activeJobId = null;
+        await refreshAll();
+      }
+    }
+
+    async function denyCurrentJob() {
+      if (!activeJobId) return;
+      const id = activeJobId;
+      document.getElementById("approval-bar").classList.add("hidden");
+      document.getElementById("approval-bar").classList.remove("flex");
+      term.writeln("\r\n\x1b[31m✖ REJECTED\x1b[0m\r\n");
+      try {
+        await fetch(`/v1/commands/${id}/deny`, { method: "POST" });
+      } finally {
+        activeJobId = null;
+        await refreshAll();
+      }
+    }
+
+    async function triggerEStop() {
+      term.writeln("\r\n\x1b[41;1;37m E-STOP — ALL CONTAINERS TERMINATED \x1b[0m\r\n");
+      try {
+        await fetch("/v1/estop", { method: "POST" });
+      } finally {
+        document.getElementById("kill-btn").classList.add("hidden");
+        await refreshAll();
+      }
+    }
+
+    async function killWatchedJob() {
+      if (!watchingId) return;
+      await fetch(`/v1/commands/${watchingId}/kill`, { method: "POST" });
+      term.writeln("\r\n\x1b[31m[KILL]\x1b[0m container terminated\r\n");
+      await refreshAll();
+    }
+
+    async function killJob(id) {
+      await fetch(`/v1/commands/${id}/kill`, { method: "POST" });
+      term.writeln(`\r\n\x1b[31m[KILL]\x1b[0m ${id.slice(0, 8)}\r\n`);
+      await refreshAll();
+    }
+
+    function selectPending(id) {
+      activeJobId = id;
+      const bar = document.getElementById("approval-bar");
+      bar.classList.remove("hidden");
+      bar.classList.add("flex");
+      fetch("/v1/pending")
+        .then((r) => r.json())
+        .then((jobs) => {
+          renderPending(jobs);
+          lucide.createIcons();
+        })
+        .catch(() => {});
+    }
+
+    function renderPending(jobs) {
+      const queueContainer = document.getElementById("queue-list");
+      const countBadge = document.getElementById("queue-count");
+      countBadge.textContent = `${jobs.length} pending`;
+      const bar = document.getElementById("approval-bar");
+
+      if (!jobs.length) {
+        queueContainer.innerHTML = `<div class="p-6 text-center text-zinc-600 text-xs italic">Queue clear — no pending commands.</div>`;
+        bar.classList.add("hidden");
+        bar.classList.remove("flex");
+        if (activeJobId && !jobs.some((j) => j.id === activeJobId)) activeJobId = null;
+        return;
+      }
+
+      if (!activeJobId || !jobs.some((j) => j.id === activeJobId)) {
+        activeJobId = jobs[0].id;
+      }
+      bar.classList.remove("hidden");
+      bar.classList.add("flex");
+
+      queueContainer.innerHTML = jobs.map((j) => `
+        <button type="button" onclick="selectPending('${esc(j.id)}')" class="queue-item w-full text-left p-2.5 rounded-md border ${j.id === activeJobId ? "border-signal-risk/50 bg-signal-risk/5 shadow-[0_0_20px_rgba(255,193,74,0.08)]" : "border-white/5 bg-black/25 hover:border-signal-ice/25"} text-xs font-mono space-y-1 transition">
+          <div class="flex items-center justify-between">
+            <span class="px-1.5 py-0.5 rounded text-[10px] ${riskBadge(j.risk_level)} font-bold tracking-wide">${esc(j.risk_level || "RISKY")}</span>
+            <span class="text-[10px] text-zinc-500">${esc(j.id.slice(0, 8))}</span>
+          </div>
+          <div class="text-zinc-100 font-semibold truncate">${esc(j.command)}</div>
+          <div class="text-[10px] text-zinc-500 truncate">${esc(j.risk_reason || "")}</div>
+        </button>
+      `).join("");
+    }
+
+    function renderRunning(jobs) {
+      const running = jobs.filter((j) => j.status === "running");
+      const el = document.getElementById("running-list");
+      if (!running.length) {
+        el.innerHTML = `<div class="text-[11px] text-zinc-600 italic px-1">Nothing running</div>`;
+        return;
+      }
+      el.innerHTML = running.map((j) => `
+        <div class="p-2 rounded-md border border-signal-ice/25 bg-signal-ice/5 text-xs font-mono space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-signal-ice text-[10px] font-bold tracking-wide">RUNNING</span>
+            <span class="text-[10px] text-zinc-500">${esc(j.id.slice(0, 8))}</span>
+          </div>
+          <div class="text-zinc-100 truncate">${esc(j.command)}</div>
+          <div class="flex gap-1">
+            <button type="button" onclick="watch('${esc(j.id)}')" class="px-2 py-0.5 rounded bg-hull-800 text-zinc-200 hover:bg-hull-700 text-[10px]">Watch</button>
+            <button type="button" onclick="killJob('${esc(j.id)}')" class="px-2 py-0.5 rounded border border-signal-crit/40 text-signal-crit hover:bg-signal-crit/10 text-[10px]">Kill</button>
+          </div>
+        </div>
+      `).join("");
+
+      if (!watchingId || !running.some((j) => j.id === watchingId)) {
+        watch(running[0].id, { clear: watchingId !== running[0].id });
+      }
+    }
+
+    function renderRecent(jobs) {
+      const done = jobs.filter((j) => !["pending", "running"].includes(j.status)).slice(0, 8);
+      const el = document.getElementById("recent-list");
+      if (!done.length) {
+        el.innerHTML = `<div class="text-zinc-600 italic">No completed jobs</div>`;
+        return;
+      }
+      el.innerHTML = done.map((j) => `
+        <button type="button" onclick="loadRecent('${esc(j.id)}')" class="w-full text-left px-2 py-1.5 rounded border border-white/5 hover:border-signal-ice/30 bg-black/20 transition">
+          <div class="flex justify-between gap-2">
+            <span class="${statusClass(j.status)}">${esc(j.status)}</span>
+            <span class="text-zinc-500">${esc(j.id.slice(0, 8))}</span>
+          </div>
+          <div class="truncate text-zinc-300">${esc(j.command)}</div>
+        </button>
+      `).join("");
+    }
+
+    async function loadRecent(id) {
+      const job = await fetch(`/v1/commands/${id}`).then((r) => r.json());
+      lastFsDiff = (job.result && job.result.fs_diff) || null;
+      term.clear();
+      term.writeln(`\x1b[38;2;126;200;255m[REPLAY]\x1b[0m ${id.slice(0, 8)} · ${job.status}`);
+      if (job.result) {
+        if (job.result.stdout) term.write(job.result.stdout);
+        if (job.result.stderr) term.write("\x1b[31m" + job.result.stderr + "\x1b[0m");
+        if (job.result.error) term.writeln("\x1b[31m" + job.result.error + "\x1b[0m");
+      }
+      watchingId = id;
+      document.getElementById("term-job").textContent = `replay · ${id.slice(0, 8)}`;
+      document.getElementById("kill-btn").classList.add("hidden");
+      switchTab("diff");
+      lucide.createIcons();
+    }
+
+    function renderEgress(events) {
+      const el = document.getElementById("egress-list");
+      if (!events.length) {
+        el.innerHTML = `<div class="p-6 text-center text-zinc-600 text-xs italic">No CONNECT events yet</div>`;
+        return;
+      }
+      el.innerHTML = events.slice(0, 40).map((ev) => {
+        const allowed = ev.action === "allowed";
+        return `
+          <div class="p-1.5 rounded border ${allowed ? "border-white/5 bg-black/20" : "border-signal-crit/30 bg-signal-crit/5"} flex items-center justify-between gap-2">
+            <span class="truncate ${allowed ? "text-zinc-300" : "text-signal-crit font-bold"}">${esc(ev.host)}:${esc(ev.port)}</span>
+            <span class="shrink-0 px-1 text-[9px] rounded font-bold tracking-wide ${allowed ? "bg-signal-safe/10 text-signal-safe" : "bg-signal-crit/15 text-signal-crit"}">
+              ${allowed ? "PASS" : "BLOCK"}
+            </span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function setSandboxOk(ok) {
+      const dot = document.getElementById("sandbox-dot");
+      const ping = document.getElementById("sandbox-ping");
+      const label = document.getElementById("sandbox-label");
+      if (ok) {
+        dot.className = "relative inline-flex rounded-full h-2 w-2 bg-signal-safe";
+        ping.classList.remove("hidden");
+        label.className = "text-signal-safe font-semibold tracking-wide";
+        label.textContent = "CONTAINED";
+      } else {
+        dot.className = "relative inline-flex rounded-full h-2 w-2 bg-signal-crit";
+        ping.classList.add("hidden");
+        label.className = "text-signal-crit font-semibold tracking-wide";
+        label.textContent = "OFFLINE";
+      }
+    }
+
+    function setEgressOk(ok) {
+      const dot = document.getElementById("egress-dot");
+      const label = document.getElementById("egress-label");
+      if (ok) {
+        dot.className = "relative inline-flex rounded-full h-2 w-2 bg-signal-net";
+        label.className = "text-signal-net font-semibold";
+        label.textContent = ":8888 WL";
+      } else {
+        dot.className = "relative inline-flex rounded-full h-2 w-2 bg-signal-crit";
+        label.className = "text-signal-crit font-semibold";
+        label.textContent = "DOWN";
+      }
+    }
+
+    async function refreshAll() {
+      try {
+        const health = await fetch("/health").then((r) => {
+          if (!r.ok) throw new Error("health");
+          return r.json();
+        });
+        setSandboxOk(health.status === "ok");
+      } catch (_) {
+        setSandboxOk(false);
+      }
+
+      try {
+        const [pending, jobs, egress] = await Promise.all([
+          fetch("/v1/pending").then((r) => r.json()),
+          fetch("/v1/jobs?limit=30").then((r) => r.json()),
+          fetch("/v1/egress/events?limit=40").then((r) => {
+            if (!r.ok) throw new Error("egress");
+            return r.json();
+          }),
+        ]);
+        egressFailStreak = 0;
+        setEgressOk(true);
+        renderPending(pending);
+        renderRunning(jobs);
+        renderRecent(jobs);
+        renderEgress(egress);
+        lucide.createIcons();
+      } catch (err) {
+        console.error("Dashboard poll error:", err);
+        egressFailStreak += 1;
+        if (egressFailStreak >= 2) setEgressOk(false);
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (isEditableFocus()) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.key === "a" || e.key === "A") && activeJobId) {
+        e.preventDefault();
+        approveCurrentJob();
+      } else if ((e.key === "d" || e.key === "D") && activeJobId) {
+        e.preventDefault();
+        denyCurrentJob();
+      } else if (e.key === "Escape" && e.shiftKey) {
+        e.preventDefault();
+        triggerEStop();
+      }
+    });
+
+    refreshAll();
+    setInterval(refreshAll, 1000);
+  </script>
+</body>
+</html>
